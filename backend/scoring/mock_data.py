@@ -1,29 +1,10 @@
-"""Deterministic source scores used only for end-to-end integration testing."""
+"""Deterministic scores for sources that have no real collector yet (Reddit does)."""
 
 from .types import ScoringFinding, ScoreStatus, SourceScore
 
 
 def mock_source_scores() -> tuple[SourceScore, ...]:
     return (
-        SourceScore(
-            id="reddit",
-            label="Reddit",
-            status=ScoreStatus.AVAILABLE,
-            risk_score=80.0,
-            findings=(
-                ScoringFinding(
-                    rule_id="MOCK_REDDIT_NEGATIVE_DISCUSSIONS",
-                    title="Mock negative discussion signal",
-                    explanation=(
-                        "Integration data assumes multiple independent Reddit "
-                        "complaints about the seller."
-                    ),
-                    impact=80.0,
-                    metadata={"mock": True},
-                ),
-            ),
-            metadata={"mock": True},
-        ),
         SourceScore(
             id="domain-age",
             label="Domain Age",

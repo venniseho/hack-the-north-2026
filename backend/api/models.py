@@ -10,7 +10,7 @@ class ApiModel(BaseModel):
 
 
 class AnalyzeRequest(ApiModel):
-    current_url: StrictStr | None = Field(default=None, alias="currentUrl")
+    current_url: StrictStr = Field(alias="currentUrl")
 
 
 class ScoringFindingResponse(ApiModel):

@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .analysis import create_mock_analysis
+from ..agent.agent import research_store
+from ..scoring.sources.reddit import score_reddit
+from .analysis import create_analysis
 from .models import AnalysisResponse, AnalyzeRequest
 
 
@@ -23,5 +25,6 @@ app.add_middleware(
 
 
 @app.post("/analyze", response_model=AnalysisResponse)
-def analyze(request: AnalyzeRequest) -> AnalysisResponse:
-    return create_mock_analysis(request.current_url)
+async def analyze(request: AnalyzeRequest) -> AnalysisResponse:
+    findings = await research_store(request.current_url)
+    return create_analysis(request.current_url, score_reddit(findings))
