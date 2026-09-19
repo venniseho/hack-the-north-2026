@@ -6,7 +6,7 @@ interface ErrorStateProps {
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
     <div className="space-y-4 px-4 py-5">
-      <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-rose-950 dark:border-rose-800/70 dark:bg-rose-950/60 dark:text-rose-100">
+      <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-rose-950 dark:border-[#985057] dark:bg-[#352226] dark:text-[#F0A9AC]">
         <p className="text-sm font-bold">Unable to complete analysis.</p>
         <p className="mt-1 text-xs leading-5 opacity-80">
           {message ?? 'The request could not be completed. Please try again.'}

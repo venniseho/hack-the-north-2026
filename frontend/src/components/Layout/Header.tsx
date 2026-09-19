@@ -26,21 +26,21 @@ export function Header({ analysis, theme, onToggleTheme, onBack }: HeaderProps) 
           )}
 
           <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-wide text-[#007889] dark:text-teal-300">
-            Scam Check
-          </p>
-          <h1 className="mt-0.5 truncate text-base font-black text-slate-950 dark:text-white">
-            {storeName}
-          </h1>
-          <p className="truncate text-xs font-medium text-slate-500 dark:text-teal-100/65">
-            {domain}
-          </p>
-          {analysis?.product?.name && (
-            <p className="mt-1 truncate text-xs text-slate-600 dark:text-teal-100/75">
-              {analysis.product.name}
-              {analysis.product.price ? ` - ${analysis.product.price}` : ''}
+            <p className="text-[11px] font-black uppercase tracking-wide text-[#007889] dark:text-teal-300">
+              Scam Check
             </p>
-          )}
+            <h1 className="mt-0.5 truncate text-base font-black text-slate-950 dark:text-white">
+              {storeName}
+            </h1>
+            <p className="truncate text-xs font-medium text-slate-500 dark:text-teal-100/65">
+              {domain}
+            </p>
+            {analysis?.product?.name && (
+              <p className="mt-1 truncate text-xs text-slate-600 dark:text-teal-100/75">
+                {analysis.product.name}
+                {analysis.product.price ? ` - ${analysis.product.price}` : ''}
+              </p>
+            )}
           </div>
         </div>
 

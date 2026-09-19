@@ -99,13 +99,6 @@ function IdleState({ onRun }: { onRun: (request?: AnalysisRequest) => void }) {
           Run Scam Check
         </button>
 
-        <button
-          type="button"
-          onClick={() => onRun({ mode: 'insufficient-data' })}
-          className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#007889] dark:border-teal-700 dark:text-teal-100 dark:hover:bg-[#0a4758]"
-        >
-          Preview limited-data state
-        </button>
       </section>
     </div>
   );

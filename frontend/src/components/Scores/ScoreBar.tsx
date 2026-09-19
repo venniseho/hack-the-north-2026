@@ -11,8 +11,8 @@ interface ScoreBarProps {
 
 const barClasses: Record<RiskStatus, string> = {
   low: 'bg-emerald-500 dark:bg-emerald-400',
-  medium: 'bg-amber-500 dark:bg-amber-400',
-  high: 'bg-rose-500 dark:bg-rose-400',
+  medium: 'bg-amber-500 dark:bg-[#D6924F]',
+  high: 'bg-rose-500 dark:bg-[#D56B70]',
   unknown: 'bg-slate-400 dark:bg-slate-500',
 };
 

@@ -9,9 +9,9 @@ interface FindingCardProps {
 const severityClasses: Record<FindingSeverity, string> = {
   info: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-teal-700 dark:bg-teal-950/70 dark:text-teal-100',
   warning:
-    'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-700 dark:bg-amber-950/70 dark:text-amber-100',
+    'border-amber-300 bg-amber-100 text-amber-900 dark:border-[#8F5B36] dark:bg-[#35271E] dark:text-[#F0BE8B]',
   danger:
-    'border-rose-300 bg-rose-100 text-rose-900 dark:border-rose-700 dark:bg-rose-950/70 dark:text-rose-100',
+    'border-rose-300 bg-rose-100 text-rose-900 dark:border-[#985057] dark:bg-[#352226] dark:text-[#F0A9AC]',
 };
 
 const severityLabels: Record<FindingSeverity, string> = {
