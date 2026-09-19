@@ -1,101 +1,105 @@
-import { useState, type FormEvent } from 'react';
-import { sendMessage } from '@/lib/api';
+import { useEffect, useState } from 'react';
+import { OverallRisk } from '@/src/components/Analysis/OverallRisk';
+import { RiskSummary } from '@/src/components/Analysis/RiskSummary';
+import { Header } from '@/src/components/Layout/Header';
+import { Panel } from '@/src/components/Layout/Panel';
+import { ErrorState } from '@/src/components/Shared/ErrorState';
+import { LoadingState } from '@/src/components/Shared/LoadingState';
+import { loadingSteps } from '@/src/data/mockAnalysis';
+import { analysisService, type AnalysisRequest } from '@/src/services/analysisService';
+import type { ScamAnalysis } from '@/src/types/analysis';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
+type ViewState = 'idle' | 'loading' | 'success' | 'error';
+type Theme = 'light' | 'dark';
+
+const THEME_STORAGE_KEY = 'scam-check-theme';
+
+function getPreferredTheme(): Theme {
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme;
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [draft, setDraft] = useState('');
-  const [threadId, setThreadId] = useState<string>();
-  const [isSending, setIsSending] = useState(false);
+  const [viewState, setViewState] = useState<ViewState>('idle');
+  const [analysis, setAnalysis] = useState<ScamAnalysis>();
   const [error, setError] = useState<string>();
+  const [lastRequest, setLastRequest] = useState<AnalysisRequest>({ mode: 'standard' });
+  const [theme, setTheme] = useState<Theme>(() => getPreferredTheme());
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  useEffect(() => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
-    const content = draft.trim();
-    if (!content || isSending) return;
-
-    setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'user', content }]);
-    setDraft('');
-    setIsSending(true);
+  async function runAnalysis(request: AnalysisRequest = { mode: 'standard' }) {
+    setViewState('loading');
     setError(undefined);
+    setLastRequest(request);
 
     try {
-      const reply = await sendMessage(content, threadId);
-      setThreadId(reply.threadId);
-      setMessages((prev) => [
-        ...prev,
-        { id: crypto.randomUUID(), role: 'assistant', content: reply.content },
-      ]);
+      const nextAnalysis = await analysisService.getAnalysis(request);
+      setAnalysis(nextAnalysis);
+      setViewState('success');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Request failed.');
-    } finally {
-      setIsSending(false);
+      setViewState('error');
     }
   }
 
-  return (
-    <div className="flex h-full flex-col bg-white text-sm text-slate-900 dark:bg-slate-900 dark:text-slate-100">
-      <header className="border-b border-slate-200 px-4 py-3 font-semibold dark:border-slate-700">
-        Assistant
-      </header>
+  function returnToLanding() {
+    setViewState('idle');
+    setAnalysis(undefined);
+    setError(undefined);
+  }
 
-      <main className="flex-1 space-y-3 overflow-y-auto p-4">
-        {messages.length === 0 && (
-          <p className="text-slate-500 dark:text-slate-400">
-            Ask a question to get started.
-          </p>
+  return (
+    <Panel theme={theme}>
+      <Header
+        analysis={analysis}
+        theme={theme}
+        onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+        onBack={viewState === 'idle' ? undefined : returnToLanding}
+      />
+
+      <main className="min-h-0 flex-1 overflow-y-auto">
+        {viewState === 'idle' && <IdleState onRun={runAnalysis} />}
+
+        {viewState === 'loading' && <LoadingState steps={loadingSteps} />}
+
+        {viewState === 'error' && (
+          <ErrorState message={error} onRetry={() => void runAnalysis(lastRequest)} />
         )}
 
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
-
-        {isSending && <p className="text-slate-500 dark:text-slate-400">Thinking…</p>}
-        {error && <p className="text-red-600 dark:text-red-400">{error}</p>}
+        {viewState === 'success' && analysis && (
+          <div className="space-y-5 px-4 py-4">
+            <OverallRisk analysis={analysis} />
+            <RiskSummary categories={analysis.categories} findings={analysis.findings} />
+          </div>
+        )}
       </main>
-
-      <form
-        onSubmit={handleSubmit}
-        className="flex gap-2 border-t border-slate-200 p-3 dark:border-slate-700"
-      >
-        <input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Send a message…"
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-800"
-        />
-        <button
-          type="submit"
-          disabled={isSending || draft.trim() === ''}
-          className="rounded-md bg-blue-600 px-3 py-2 font-medium text-white disabled:opacity-50"
-        >
-          Send
-        </button>
-      </form>
-    </div>
+    </Panel>
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
-  const isUser = message.role === 'user';
-
+function IdleState({ onRun }: { onRun: (request?: AnalysisRequest) => void }) {
   return (
-    <div className={isUser ? 'text-right' : 'text-left'}>
-      <span
-        className={`inline-block max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-left ${
-          isUser
-            ? 'bg-blue-600 text-white'
-            : 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
-        }`}
-      >
-        {message.content}
-      </span>
+    <div className="px-4 py-5">
+      <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-teal-700/60 dark:bg-[#082a31]">
+        <p className="text-base font-black text-slate-950 dark:text-white">Check this store</p>
+        <p className="mt-2 text-xs leading-5 text-slate-600 dark:text-teal-100/70">
+          Run a compact risk review for suspicious reputation and review-quality signals.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => onRun({ mode: 'standard' })}
+          className="mt-4 w-full rounded-md bg-[#007889] px-3 py-2 text-sm font-black text-white shadow-sm transition hover:bg-[#026876] focus:outline-none focus:ring-2 focus:ring-[#007889] focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#082a31]"
+        >
+          Run Scam Check
+        </button>
+
+      </section>
     </div>
   );
 }
