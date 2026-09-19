@@ -1,0 +1,502 @@
+{
+  "_comment": "Test data for the GPTZero scorer. Trustpilot reviews are verbatim, scraped 2026-09-19 via a real browser. Never put LLM-summarised text in here - GPTZero would score the summary, not the review.",
+  "groups": [
+    {
+      "name": "capatee.com",
+      "label": "scam",
+      "note": "Blocklisted storefront. 2,062 Trustpilot reviews on an unclaimed profile at 3.7 stars - review-farm shaped.",
+      "trustpilot": {
+        "score": 3.7,
+        "review_count": 2062,
+        "claimed": false
+      },
+      "reviews": [
+        {
+          "id": "capatee.com-0",
+          "text": "After reading all the reviews, I feel better that Im not the only one who feels like they’ve been taken advantage of.\nI ordered 2 dresses, they both were very large, the sizing chart is not consistent, fabric cheap looking and feeling. Tried to return with their “ easy return policy”, LOL, after they offered me first $20.00, then $36.00, for $107.00 purchase, I decided I’d return the items knowing I had to pay for the return. I go to the UPS store, and it was going to cost over $200.00 to send the merchandise to DUBAI!! This company stinks, don’t buy from them. If I could give them a minus, it would be -5 stars. I now am waiting for my C C company to handle this, wish me luck",
+          "rating": 1,
+          "author": "Cathy Tiano",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-1",
+          "text": "I placed an order for 3 items. I carefully reviewed the return policy and felt assured they would honor that. However, the policy says you must contact customer service to process a return. I wanted to return 1 item. After 4 attempts to reach them, they still would not respond. Which is interesting since right after I placed the initial order, I reached out to them for a change in the delivery address. They responded instantly! They just hoped I would give up on the return request. Eventually I did. Be very careful about ordering from this company. Be sure you have  money to burn because they will not help you return!",
+          "rating": 1,
+          "author": "SUSAN COOPER",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-2",
+          "text": "The items were too big and I asked for a full refund, first they offered to exchange but I wanted a refund, then they offered a discount, I asked for a refund, then they offered a bigger discount, I asked for a refund or a bigger discount. They stopped communicating altogether, I emailed four more times asking for them to communicate but they never responded. \nI am left with over a hundred dollars worth of clothes that won’t fit and they won’t respond. \nMy advice would be to NEVER DO BUSINESS with them, to spend your money at reputable stores and be happy.  I am totally disgusted.",
+          "rating": 1,
+          "author": "Sheila King",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-3",
+          "text": "I ordered some tops and pants, order arrived in good time but sizing was off. Website said to email them for address label to make the return. No response, crickets!!! I have emailed at least 5 times using two different emails in their website. The bad part is I wanted to exchange for a different size and the website suggested placing a new order rather than just exchange. Still haven’t received that order. My next step is to work with my credit card to investigate the company. \nDo not order from this company. Too bad because they have cute clothes.",
+          "rating": 2,
+          "author": "Marie Meagher",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-4",
+          "text": "On June 22, 2026, I received an email from Capatee that an order had been delivered that day. It was not. Our Ring Camera did not show that delivery nor did it show anyone coming to our door to remove it.  I emailed Capatee on June 24, 2026 about the problem. There was not a response.  I emailed a second time on July 6, 2026. Still no response. I emailed a third time on July 14, 2026, saying if I did not hear from them in three (3) days, I would contact my card company and make a complaint.",
+          "rating": 1,
+          "author": "Pamela",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5",
+          "text": "I honestly was uneasy about ordering from a company I wasn’t familiar with.  When the item was received it was beautiful and looked exactly like the photo.  I am completely happy with my order, from the ordering process to the updates I received to the packaging.  Will definitely order from this company again!  The only small drawback was the time it took to receive, which wasn’t unreasonable but I was nervous because I bought the dress for a specific occasion.",
+          "rating": 4,
+          "author": "Sandi Wyatt",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-6",
+          "text": "Clothes were comfortable and well made",
+          "rating": 4,
+          "author": "Laura Gibson",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-7",
+          "text": "Great outfits! Pretty casual dress.",
+          "rating": 5,
+          "author": "tony",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-8",
+          "text": "Timely, good quality and fit",
+          "rating": 5,
+          "author": "customerMark",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-9",
+          "text": "Good quality.  As expected.",
+          "rating": 5,
+          "author": "Margaret Freeman",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-10",
+          "text": "You can’t track shipping.",
+          "rating": 3,
+          "author": "customer Peter",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-11",
+          "text": "I love it. It looks great",
+          "rating": 5,
+          "author": "Sandra Scherbarth",
+          "source": "trustpilot"
+        }
+      ]
+    },
+    {
+      "name": "kotn.com",
+      "label": "legit",
+      "note": "Established DTC brand. 43 organic reviews, mostly angry - what real Trustpilot presence looks like.",
+      "trustpilot": {
+        "score": 2.7,
+        "review_count": 43,
+        "claimed": false
+      },
+      "reviews": [
+        {
+          "id": "kotn.com-0",
+          "text": "I have never felt so neglected by a company before. If I could give less than one star I would. \n\nI want to preface this by saying that I rarely complain about customer service issues because I have worked in customer service myself. I completely understand that things get busy and that delays happen, so I was incredibly patient with them. However, my experience with Kotn’s customer service was beyond frustrating.\n\nI placed an order in November, but due to the Canada Post strike, I didn’t receive my packages until well into January. One of the packages was lost in transit, and I needed to return some of the items. That’s when the real nightmare began.\n\nI reached out to customer service, and I was assigned a representative named Nouran. Unfortunately, communication was painfully slow—she often took days, sometimes even a full week, to reply. Because of this, I felt like I had to respond immediately to every email just to avoid another long delay. Even worse, despite my repeated messages, I found myself constantly re-explaining the same request over and over again.\n\nOne of my biggest frustrations was trying to get a Canada Post return label instead of a FedEx one. I made this request multiple times, yet my emails were either completely ignored or met with vague responses asking me to “reconfirm” what I had already stated clearly. It felt like I was stuck in an endless loop of waiting and repeating myself, with no actual resolution in sight.\n\nIt is now almost March, and I am still dealing with this issue—something that should have been resolved months ago. The lack of efficiency, responsiveness, and basic customer service skills has made this an incredibly frustrating experience. I will not be shopping here again.",
+          "rating": 1,
+          "author": "Shelagh Joseph",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-1",
+          "text": "Made an online purchase shortly before Christmas which arrived very quickly (despite a postage strike where I live). I ended up making an in-store return and the refund came through really quickly. \n\nOnly piece of feedback is that when I did the return in store they gave me no receipt or physical validation of any kind as proof that I’d made the return. Just said that I’d receive an email confirmation of the return within 1-2 business days. When the confirmation showed up, the amount on it showed up as $0.00, which made me worry something had gone wrong with the order. It occurred to me in retrospect that if something had gone wrong with their tech/systems and my refund confirmation email hadn’t come through that I’d have no way of proving that I’d actually made that return (which was a bit worrying - I felt silly, like I should have insisted on some sort of physical proof of the return when I was in store).\n\nAs it happened, I emailed them with my concerns regarding the $0.00 amount and was reassured that that’s just how their systems worked and that the refund had gone through fine (which was true, I received the refund within just a few days of returning and it had been safely in my bank account for about a week before they replied to my email). \n\nAll in all a great experience with Kotn even though the clothes were not for me!",
+          "rating": 5,
+          "author": "Alex",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-2",
+          "text": "I like the quality of a lot of their items but their sizing is so off. Why is no one doing anything to fix this? Their socks while very plush and comfortable run HUGE while being too tight on the ankle. I'm a woman's US size 9 and while I usually order M/L I had to give those to my husband (and they may even be too big for him!). I re-ordered size S/M and they're still almost too big! On top of that for some reason the grey socks are noticeably much larger than the other colors in the same size. There is no excuse for this kind of inconsistency.\nI recently ordered a long sleeve turtleneck and ordered a size larger based on reviews of it running small. It didn't only run very small, the fit was also all wrong. The waist was somewhere between normal and very cropped length. Way too short. The sleeves too were too short making it look awkward. All this while there was plenty of excess fabric elsewhere on the top. It's not only their sizing that's off but their design/proportions. I am now really hesitant to order any more clothes from them.",
+          "rating": 2,
+          "author": "Holly",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-3",
+          "text": "Placed an Order on March 9, still haven't received it by March 19 in Australia, website says 5-7 days typically which would align if they used Fedex or USPS. \n\nThey used some barely known shipping company called Asendia, the item only left the US on 14th and when I called Asendia they said it could take up to 15 days to reach Australia. I think they have sent via sea and charged a steep shipping fee for a pair of jeans. \n\nWhat makes things worse is the customer support is very flippant and reluctant to help, the way they respond with a lack of urgency makes me think they are used to these shipping times and give incorrect information on shipping page. \n\nThey gave a small of $25 from the shipping fee which wasn't the total amount but at least it was something, the issue was they reshipped using the same courier and its taken even longer. \n\nArguably one of the most comically bad shopping experiences I have ever had.",
+          "rating": 1,
+          "author": "Jack",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-4",
+          "text": "The worst customer experience I’ve ever experienced in my life (and I’m not exaggerating). I’ve been trying to exchange  a purchase made in December (it is now the end of March). I have received essentially no support from the rep Nouran and my emails go weeks without a response.  I spent hundredsssss of dollars at Kotn outfitting our bedroom and I’m so disappointed in the lack of support or response from them. I’m not even trying to return something. I really wanted to believe that this was due to high volume over Christmas but now that it’s March, this no longer holds. The inability to leave a review on with them directly also says a lot. \n\nUnfortunately I won’t be purchasing from KOTN again for this exact reason and will share my experience with others. Think twice before you buy because good luck getting any support after your purchase.",
+          "rating": 1,
+          "author": "Ariel Meagher",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5",
+          "text": "i really like the styles they offer, but for the price i feel it isn’t worth it - many pieces i have of theirs have stretched out quite a lot, and had the little bits of elastic breakage you can see on the garment, making it not really wearable for public. its a shame because i did love these pieces, and to me their clothing is very expensive so i would expect it to last longer or be better quality to hold up. \n\ni will say i emailed them about one of the garments and they gave me a credit to order something else and the suggestion to not put them in the dryer, wish i would have not done that! unfortunately they change their styles frequently and the item i wanted to reorder was no longer available, but at least they were helpful.",
+          "rating": 3,
+          "author": "Sam Cimino",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-6",
+          "text": "I ordered the black crew neck and chinos, and both items feel okay, but they look cheaply made, shiny, and a bit awkward.",
+          "rating": 2,
+          "author": "Wyatt",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-7",
+          "text": "The best quality and very cooperative customer support",
+          "rating": 5,
+          "author": "Karine",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-8",
+          "text": "Excellent products and excellent customer service",
+          "rating": 5,
+          "author": "Samar Sanad",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-9",
+          "text": "Great quality and amazing customer service",
+          "rating": 5,
+          "author": "Karen",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-10",
+          "text": "Very good quality and customer support",
+          "rating": 5,
+          "author": "Rimon",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-11",
+          "text": "Perfect one",
+          "rating": 5,
+          "author": "Abanoub Michel",
+          "source": "trustpilot"
+        }
+      ]
+    },
+    {
+      "name": "capatee.com (5-star)",
+      "label": "scam",
+      "note": "The FARMED reviews - 5-star only, from a 2,062-review unclaimed profile. If the AI-slop thesis held, these would flag. They do not: GPTZero scores them ~0.03, i.e. human. Median 72 chars.",
+      "trustpilot": null,
+      "reviews": [
+        {
+          "id": "capatee.com-5s-0",
+          "text": "Great outfits! Pretty casual dress.",
+          "rating": 5,
+          "author": "tony",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-1",
+          "text": "I Received the product on time in perfect condition. The dress is beautiful and as shown on your site. I will buy more items from your company. Thank you.",
+          "rating": 5,
+          "author": "Christina Keener",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-2",
+          "text": "First time I buy in Capatee and I am so please, material is  nice and soft , breathable, and right to size. Very nice items.",
+          "rating": 5,
+          "author": "MARIA ALEXANDRA DAY ACKERMANN",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-3",
+          "text": "Nice looking quality clothing.\nDelivery took a bit longer than I expected.",
+          "rating": 5,
+          "author": "Karen Massie",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-4",
+          "text": "Good quality.  As expected.",
+          "rating": 5,
+          "author": "Margaret Freeman",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-5",
+          "text": "It was delivered With/in a reasonable amount of time and the items I bought looked fantastic.",
+          "rating": 5,
+          "author": "Gerri Walker Thierbach",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-6",
+          "text": "Timely, good quality and fit",
+          "rating": 5,
+          "author": "customerMark",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-7",
+          "text": "The website was easy to access and navigate.I was  sent a confirmation email promptly and sent another message when my order shipped. \nThe dresses I ordered were perfect and I was pleased with my order and the service.",
+          "rating": 5,
+          "author": "Consumer",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-8",
+          "text": "New company: absolutely love the clothing I got.  They fit perfectly and look great.   You will love the clothing.  \nDelivered promptly, great quality. I would not hesitate to order from this company again.",
+          "rating": 5,
+          "author": "pak",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-9",
+          "text": "Shopping was easy. Products not quite as good.",
+          "rating": 5,
+          "author": "Jan Blomgren",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-10",
+          "text": "The quality is very good and delivery is quick.  I will order again.",
+          "rating": 5,
+          "author": "Sandy",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-11",
+          "text": "For the most part, the quality of the tops are very soft and comfortable - I do like the heavier cotton ones better than the really thin material ones (blue and white stripped and floral tops are the material I prefer; the yellow one I don't like the material so much).",
+          "rating": 5,
+          "author": "Nancy Boggs",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-12",
+          "text": "I’m very happy that your company was able to deliver the merchandise before I go on my cruise. The caprice’s are was I was expecting, just beautiful. Thank you so much 😊",
+          "rating": 5,
+          "author": "Martha",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-13",
+          "text": "Item ordered wasn’t available and VISA was promptly credited.",
+          "rating": 5,
+          "author": "Pat",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-14",
+          "text": "The products are so nice and I get compliments every time I wear one. I still cannot figure out how to return a blouse that was too small. HELP!!",
+          "rating": 5,
+          "author": "Phyllis  Crouch",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-15",
+          "text": "I love the shirts and they were shipped fast! These are really good quality and look great on!",
+          "rating": 5,
+          "author": "Annette Smith",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-16",
+          "text": "Clothes arrived in perfect shape.  Just wish it was delivered faster. Great company, will purchase again",
+          "rating": 5,
+          "author": "Beky ",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-17",
+          "text": "The size of the dresses was great. I am pleased with the purchase.",
+          "rating": 5,
+          "author": "Mark Eshleman",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-18",
+          "text": "I do not usually order from a place I am not familiar with.  However, to my surprise I am very happy not only with the order process, the sizing, the answers to my questions but the quality of the blouses that I ordered.  I will be ordering more from you . thank you so very much.",
+          "rating": 5,
+          "author": "Debbie Dawson",
+          "source": "trustpilot"
+        },
+        {
+          "id": "capatee.com-5s-19",
+          "text": "The dress was lovely and a good quality",
+          "rating": 5,
+          "author": "Lynette",
+          "source": "trustpilot"
+        }
+      ]
+    },
+    {
+      "name": "kotn.com (5-star)",
+      "label": "legit",
+      "note": "5-star reviews from an established brand, for comparison. Median 259 chars - roughly 4x longer than the farmed set, and scored identically human.",
+      "trustpilot": null,
+      "reviews": [
+        {
+          "id": "kotn.com-5s-0",
+          "text": "Long-time Kotn shopper. Made my first purchase in 2020 during the pandemic. I have seen them improve their fit and material quality considerably over time. Their new spring collection is exciting with trendier styles (love their off-shoulder tee). Kotn has been one of my favourites for several years now and I see continuous improvements in their product and positioning season over season. Definitely a brand to watch..",
+          "rating": 5,
+          "author": "Sara K.",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-1",
+          "text": "Very good quality and customer support",
+          "rating": 5,
+          "author": "Rimon",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-2",
+          "text": "Exceptional quality and highly recommended. Their customer service is outstanding as well. If you’re looking for a comfortable yet elegant outfit, don’t hesitate to choose them.",
+          "rating": 5,
+          "author": "Sandy Abdelmalak",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-3",
+          "text": "Excellent products and excellent customer service",
+          "rating": 5,
+          "author": "Samar Sanad",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-4",
+          "text": "Perfect one",
+          "rating": 5,
+          "author": "Abanoub Michel",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-5",
+          "text": "The best quality and very cooperative customer support",
+          "rating": 5,
+          "author": "Karine",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-6",
+          "text": "Great quality and amazing customer service",
+          "rating": 5,
+          "author": "Karen",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-7",
+          "text": "Contrary to others reviews, my experience was amazing.\nI ordered two items on Friday 09/01/26, which I received today 12/01/26. \nThe quality is superb. I can feel the weight of the cotton and the quality. \nI’ll definitely be ordering by from here again.",
+          "rating": 5,
+          "author": "UnhappyMan",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-8",
+          "text": "I get a new piece from KOTN once or twice a year and then it always becomes my staple for that season.\nThis seasons winner is a green, warm cardigan. Every time I wear it, I get so many compliments. It is a unique piece. I haven't seen many other stores make pieces in this colour (yet). \nOrdering was fast. Customer Support got back to me quickly when I had to change my shipping address.",
+          "rating": 5,
+          "author": "Julie Thorne",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-9",
+          "text": "Made an online purchase shortly before Christmas which arrived very quickly (despite a postage strike where I live). I ended up making an in-store return and the refund came through really quickly. \n\nOnly piece of feedback is that when I did the return in store they gave me no receipt or physical validation of any kind as proof that I’d made the return. Just said that I’d receive an email confirmation of the return within 1-2 business days. When the confirmation showed up, the amount on it showed up as $0.00, which made me worry something had gone wrong with the order. It occurred to me in retrospect that if something had gone wrong with their tech/systems and my refund confirmation email hadn’t come through that I’d have no way of proving that I’d actually made that return (which was a bit worrying - I felt silly, like I should have insisted on some sort of physical proof of the return when I was in store).\n\nAs it happened, I emailed them with my concerns regarding the $0.00 amount and was reassured that that’s just how their systems worked and that the refund had gone through fine (which was true, I received the refund within just a few days of returning and it had been safely in my bank account for about a week before they replied to my email). \n\nAll in all a great experience with Kotn even though the clothes were not for me!",
+          "rating": 5,
+          "author": "Alex",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-10",
+          "text": "I went to their store in Montreal a couple of times and the staff is honestly always great! No pressure to buy and felt like they were genuinely helping me to choose the best piece. Last time i went, I ended up taking the dark wash anti-fit denim jeans and I couldn't be happier! The fact that their clothing are ethically made and environmentally conscious is also amazing!",
+          "rating": 5,
+          "author": "Jose-Miguel Pache Duran",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-11",
+          "text": "Excellent customer service. Small issues with tshirts i had ordered ( plain white ) a couple of years ago and rectified immediately by Kotn. I have since ordered more and they have become my ALL TIME favorite t’s ( pretty much all I ever wear 🥰)…highly recommended.",
+          "rating": 5,
+          "author": "Shirley Claire Williams",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-12",
+          "text": "I ordered a couple t shirts, a couple turtlenecks, and a knit sweater, and I'm obsessed with them all. Fantastic quality and so comfortable! I did size up on the T-shirts which I'm glad I did as I think they run a tiny bit small, but they're my absolute favourite T-shirts. My one criticism is when I ordered to the UK and it took quite a long time to arrive. Unfortunately the postal service messed up and didn't notify me my package had arrived and I had a customs charge to pay so my order got sent back to the US, but customer service were lovely and I received a full refund.",
+          "rating": 5,
+          "author": "Kate",
+          "source": "trustpilot"
+        },
+        {
+          "id": "kotn.com-5s-13",
+          "text": "I got their t-shirt and Oxford shirt for Christmas and they're so comfortable.\n\nI love their environmental credentials, and wish that more companies invested in sustainable cotton. I'm not a fashionista and usually buy basic stuff at Uniqlo, but Kotn is still affordable and so much better for the planet. Plus, the stuff looks like it'll last longer...\n\nThe fashion industry is a massive polluter, and although governments need to regulate more, we still have choices as consumers. We can vote at polling stations, but also with our wallets.",
+          "rating": 5,
+          "author": "Risky Business",
+          "source": "trustpilot"
+        }
+      ]
+    },
+    {
+      "name": "synthetic-slop",
+      "label": "ai_control",
+      "note": "Hand-written LLM-style filler. Not scraped. Exists so a run that flags nothing can be told apart from a run that is broken.",
+      "trustpilot": null,
+      "reviews": [
+        {
+          "id": "slop-0",
+          "text": "I absolutely love this product! The quality exceeded my expectations and the shipping was incredibly fast. Highly recommend to anyone looking for great value.",
+          "rating": 5,
+          "author": null,
+          "source": "synthetic"
+        },
+        {
+          "id": "slop-1",
+          "text": "This is a game changer! The material feels premium and the fit is perfect. Customer service was outstanding throughout the entire process.",
+          "rating": 5,
+          "author": null,
+          "source": "synthetic"
+        },
+        {
+          "id": "slop-2",
+          "text": "Overall, I am extremely satisfied with my purchase. The craftsmanship is superb and it truly delivers on its promises.",
+          "rating": 5,
+          "author": null,
+          "source": "synthetic"
+        },
+        {
+          "id": "slop-3",
+          "text": "Amazing quality and fantastic customer service. The product arrived quickly and was exactly as described. Will definitely be ordering again soon!",
+          "rating": 5,
+          "author": null,
+          "source": "synthetic"
+        },
+        {
+          "id": "slop-4",
+          "text": "The attention to detail is remarkable and the value for money is unmatched. I have already recommended this to several friends and family members.",
+          "rating": 5,
+          "author": null,
+          "source": "synthetic"
+        },
+        {
+          "id": "slop-5",
+          "text": "Exceeded all my expectations! The design is elegant, the build quality is solid, and it arrived well before the estimated delivery date.",
+          "rating": 5,
+          "author": null,
+          "source": "synthetic"
+        }
+      ]
+    }
+  ],
+  "_finding": "Measured 2026-09-19 on 157 five-star Trustpilot reviews from 3 scam and 2 legit stores: GPTZero flagged 0 of them, mean prob 0.026-0.040, with no separation between classes. The farmed reviews are cheap HUMAN reviews, not LLM output. Review LENGTH separated the classes well on the same data (review-level AUC 0.796; share of 5-star reviews over 250 chars was 5-7% for scam versus 57% for legit)."
+}
