@@ -12,7 +12,7 @@ export default defineConfig({
   manifest: {
     name: 'Hack the North 2026',
     description: 'Browser assistant powered by the Backboard backend.',
-    permissions: ['sidePanel'],
+    permissions: ['sidePanel', 'tabs'],
     host_permissions: ['http://localhost:8000/*'],
     // An action is required for the toolbar icon that opens the side panel.
     action: {},

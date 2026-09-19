@@ -1,7 +1,7 @@
 import math
 import unittest
 
-from scoring import (
+from backend.scoring import (
     SCORING_CONFIG,
     CategoryScoringConfig,
     ScoreStatus,
@@ -12,6 +12,28 @@ from scoring import (
     aggregate_category,
     aggregate_overall,
     validate_scoring_config,
+)
+
+
+TWO_SOURCE_MVP_CONFIG = ScoringConfig(
+    categories=(
+        CategoryScoringConfig(
+            id="third-party-reviews",
+            label="Third-Party Reviews",
+            weight=0.5,
+            sources=(
+                SourceScoringConfig(id="reddit", label="Reddit", weight=1.0),
+            ),
+        ),
+        CategoryScoringConfig(
+            id="onsite-review-quality",
+            label="On-Site Review Quality",
+            weight=0.5,
+            sources=(
+                SourceScoringConfig(id="gptzero", label="GPTZero", weight=1.0),
+            ),
+        ),
+    )
 )
 
 
@@ -49,7 +71,7 @@ FUTURE_THIRD_PARTY_CONFIG = CategoryScoringConfig(
 class ScoringTests(unittest.TestCase):
     def test_case_1_averages_both_available_sources(self) -> None:
         result = aggregate_overall(
-            SCORING_CONFIG,
+            TWO_SOURCE_MVP_CONFIG,
             (source_score("reddit", 80), source_score("gptzero", 60)),
         )
 
@@ -58,7 +80,7 @@ class ScoringTests(unittest.TestCase):
 
     def test_case_2_excludes_missing_reddit(self) -> None:
         result = aggregate_overall(
-            SCORING_CONFIG,
+            TWO_SOURCE_MVP_CONFIG,
             (source_score("gptzero", 60),),
         )
 
@@ -71,7 +93,7 @@ class ScoringTests(unittest.TestCase):
 
     def test_case_3_excludes_unavailable_gptzero(self) -> None:
         result = aggregate_overall(
-            SCORING_CONFIG,
+            TWO_SOURCE_MVP_CONFIG,
             (
                 source_score("reddit", 80),
                 source_score("gptzero", None),
@@ -83,7 +105,7 @@ class ScoringTests(unittest.TestCase):
 
     def test_case_4_returns_no_risk_when_both_are_unavailable(self) -> None:
         result = aggregate_overall(
-            SCORING_CONFIG,
+            TWO_SOURCE_MVP_CONFIG,
             (
                 source_score("reddit", None),
                 source_score("gptzero", None),
@@ -205,13 +227,13 @@ class ScoringTests(unittest.TestCase):
     def test_validates_scores_and_handles_zero_weights(self) -> None:
         with self.assertRaisesRegex(ValueError, "from 0 to 100"):
             aggregate_overall(
-                SCORING_CONFIG,
+                TWO_SOURCE_MVP_CONFIG,
                 (source_score("reddit", 101),),
             )
 
         with self.assertRaisesRegex(ValueError, "finite number"):
             aggregate_overall(
-                SCORING_CONFIG,
+                TWO_SOURCE_MVP_CONFIG,
                 (source_score("reddit", math.nan),),
             )
 
