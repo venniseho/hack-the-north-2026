@@ -19,6 +19,17 @@ _PERMALINK_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Trust score (0-100, higher is better). Each negative post keeps this fraction
+# of the current score, so penalties compound with diminishing effect and the
+# score never hits 0.
+_SEVERITY_FACTOR: dict[str, float] = {
+    "critical": 0.60,
+    "major": 0.75,
+    "moderate": 0.85,
+    "minor": 0.97,
+}
+_POSITIVE_GAP_CLOSE = 0.10  # each positive post closes this share of the gap to 100
+
 
 @dataclass
 class RedditPost:
@@ -37,6 +48,7 @@ class RedditFindings:
     thread_id: Optional[str] = None
     raw_research: Optional[str] = None
     error: Optional[str] = None
+    score: Optional[int] = None  # trust score 0-100; None if research failed
 
 
 _RESEARCH_SYSTEM_PROMPT = (
@@ -61,6 +73,22 @@ _EXTRACTION_INSTRUCTIONS = (
     "positive = a genuine good experience with no reported problem. "
     "If you found nothing relevant, return an empty posts array and found_any: false."
 )
+
+
+def score_reddit(posts: list[RedditPost]) -> int:
+    """Trust score 0-100 (higher is better) from Reddit posts.
+
+    S = 100 * (1 - D * (1 - g)^n), where D = 1 - prod(severity factors) is the
+    distrust from negative posts, n is the number of positive posts, and g is
+    _POSITIVE_GAP_CLOSE. Positives are applied after all negatives, so post
+    order doesn't matter.
+    """
+    score = 100.0
+    for post in posts:
+        score *= _SEVERITY_FACTOR.get(post.severity, 1.0)
+    positives = sum(post.severity == "positive" for post in posts)
+    score += (100 - score) * (1 - (1 - _POSITIVE_GAP_CLOSE) ** positives)
+    return round(score)
 
 
 async def _verify_url(client: httpx.AsyncClient, url: str) -> bool:
@@ -170,4 +198,5 @@ async def research_reddit(
         posts=posts,
         thread_id=research.thread_id,
         raw_research=research.content,
+        score=score_reddit(posts),
     )

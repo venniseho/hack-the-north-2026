@@ -31,6 +31,7 @@ async def main() -> None:
     findings = await research_reddit(client, brand="Azazie", domain="https://www.azazie.ca/?srsltid=AU7gw4Uqs4j_fNGGPQmIFNI6USu-DN7dAvGngMztzcouoTTqkl_VOxx_")
 
     print(f"found_any: {findings.found_any}")
+    print(f"score: {findings.score}")
     print(f"thread_id: {findings.thread_id}")
     if findings.error:
         print(f"error: {findings.error}")
@@ -41,6 +42,7 @@ async def main() -> None:
         print(f'    "{post.quote}"')
     print("\n--- raw research turn ---")
     print(findings.raw_research)
+    print(f"score: {findings.score}")
 
 
 if __name__ == "__main__":
