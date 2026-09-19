@@ -35,10 +35,16 @@ export default function App() {
   async function runAnalysis(request: AnalysisRequest = { mode: 'standard' }) {
     setViewState('loading');
     setError(undefined);
-    setLastRequest(request);
 
     try {
-      const nextAnalysis = await analysisService.getAnalysis(request);
+      const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+      const nextRequest = {
+        ...request,
+        currentUrl: request.currentUrl ?? activeTab?.url,
+      };
+      setLastRequest(nextRequest);
+
+      const nextAnalysis = await analysisService.getAnalysis(nextRequest);
       setAnalysis(nextAnalysis);
       setViewState('success');
     } catch (cause) {
@@ -74,7 +80,7 @@ export default function App() {
         {viewState === 'success' && analysis && (
           <div className="space-y-5 px-4 py-4">
             <OverallRisk analysis={analysis} />
-            <RiskSummary categories={analysis.categories} findings={analysis.findings} />
+            <RiskSummary analysis={analysis} />
           </div>
         )}
       </main>
@@ -96,7 +102,7 @@ function IdleState({ onRun }: { onRun: (request?: AnalysisRequest) => void }) {
           onClick={() => onRun({ mode: 'standard' })}
           className="mt-4 w-full rounded-md bg-[#007889] px-3 py-2 text-sm font-black text-white shadow-sm transition hover:bg-[#026876] focus:outline-none focus:ring-2 focus:ring-[#007889] focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#082a31]"
         >
-          Run Scam Check
+          Run Sham Scanner
         </button>
 
       </section>

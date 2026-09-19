@@ -1,4 +1,5 @@
 import type { AnalysisCategory, AnalysisSource, Finding } from '@/src/types/analysis';
+import { formatDisplayPercentage } from '@/src/utils/score';
 import { EmptyState } from '../Shared/EmptyState';
 import { FindingCard } from './FindingCard';
 
@@ -11,6 +12,20 @@ interface FindingsListProps {
 interface SourceGroup {
   source?: AnalysisSource;
   findings: Finding[];
+}
+
+function sourceSummary(source: AnalysisSource | undefined): string | undefined {
+  if (!source) return undefined;
+
+  const details = [source.scoreLabel];
+  if (typeof source.riskScore === 'number' && typeof source.maxScore === 'number') {
+    details.push(`Risk ${formatDisplayPercentage(source.riskScore, source.maxScore)}`);
+  }
+  if (source.weight) {
+    details.push(`Weight ${formatDisplayPercentage(source.weight.value, source.weight.maxValue)}`);
+  }
+
+  return details.filter(Boolean).join(' · ');
 }
 
 function groupFindingsBySource(
@@ -70,6 +85,7 @@ export function FindingsList({ categories, findings, embedded = false }: Finding
               {groupFindingsBySource(category, categoryFindings).map((group) => {
                 const sourceLabel = group.source?.label ?? 'Other source';
                 const evidenceCount = group.source?.evidenceCount;
+                const summary = sourceSummary(group.source);
 
                 return (
                   <div key={`${category.id}-${sourceLabel}`} className="space-y-2">
@@ -78,9 +94,9 @@ export function FindingsList({ categories, findings, embedded = false }: Finding
                         <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
                           {sourceLabel}
                         </p>
-                        {group.source?.scoreLabel && (
+                        {summary && (
                           <p className="truncate text-[11px] text-slate-500 dark:text-teal-100/60">
-                            {group.source.scoreLabel}
+                            {summary}
                           </p>
                         )}
                       </div>

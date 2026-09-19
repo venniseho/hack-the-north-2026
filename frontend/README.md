@@ -18,6 +18,16 @@ npm run compile  # typecheck
 npm run build    # production build into .output/
 ```
 
+The analysis screen calls the local backend. From the repository root, start
+the deterministic integration API in a separate terminal:
+
+```sh
+python -m backend.api.server
+```
+
+Until real data collectors are connected, the backend returns transparent mock
+source scores and calculates the category and overall scores normally.
+
 Click the toolbar icon to open the side panel.
 
 ## Layout

@@ -46,6 +46,17 @@ export function OverallRisk({ analysis }: OverallRiskProps) {
         </p>
       )}
 
+      {typeof overall.coverage === 'number' && (
+        <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-xs dark:border-teal-800/70">
+          <span className="font-semibold text-slate-600 dark:text-teal-100/70">
+            Analysis Coverage
+          </span>
+          <span className="font-black text-slate-950 dark:text-white">
+            {formatDisplayPercentage(overall.coverage, 100)}
+          </span>
+        </div>
+      )}
+
       <p className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-teal-100/55">
         Based on signals detected by our analysis. This is an estimate, not a guarantee.
       </p>

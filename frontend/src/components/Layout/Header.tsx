@@ -8,7 +8,7 @@ interface HeaderProps {
 }
 
 export function Header({ analysis, theme, onToggleTheme, onBack }: HeaderProps) {
-  const storeName = analysis?.store.name ?? 'Scam Check';
+  const storeName = analysis?.store.name ?? 'Sham Scanner';
   const domain = analysis?.store.domain ?? 'Check this store';
 
   return (
@@ -27,7 +27,7 @@ export function Header({ analysis, theme, onToggleTheme, onBack }: HeaderProps) 
 
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-wide text-[#007889] dark:text-teal-300">
-              Scam Check
+              Sham Scanner
             </p>
             <h1 className="mt-0.5 truncate text-base font-black text-slate-950 dark:text-white">
               {storeName}

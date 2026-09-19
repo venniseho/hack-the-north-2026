@@ -23,6 +23,7 @@ export interface ScamAnalysis {
   overall: {
     riskScore: number;
     maxScore: number;
+    coverage?: number;
     label?: string;
     status?: RiskStatus;
     confidence?: ConfidenceLevel;
@@ -54,6 +55,7 @@ export interface AnalysisSource {
   scoreLabel?: string;
   status?: RiskStatus;
   evidenceCount?: number;
+  weight?: ScoreWeight;
   metadata?: Record<string, unknown>;
 }
 
@@ -66,6 +68,8 @@ export interface Finding {
   severity: FindingSeverity;
   evidenceCount?: number;
   evidence?: Evidence[];
+  impact?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Evidence {
