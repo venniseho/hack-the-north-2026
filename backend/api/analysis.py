@@ -20,17 +20,14 @@ from .models import (
 )
 
 
-def _domain_from_url(current_url: str | None) -> str:
-    if not current_url:
-        return "mock-store.example"
-
+def _domain_from_url(current_url: str) -> str:
     parsed = urlparse(current_url)
     return parsed.hostname or current_url
 
 
 def _finding_response(finding: ScoringFinding) -> ScoringFindingResponse:
     return ScoringFindingResponse(
-        rule_id=finding.rule_id,
+        ruleId=finding.rule_id,
         title=finding.title,
         explanation=finding.explanation,
         impact=finding.impact,
@@ -47,7 +44,7 @@ def _source_response(
         label=score.label,
         weight=config.weight,
         status=score.status,
-        risk_score=score.risk_score,
+        riskScore=score.risk_score,
         findings=[_finding_response(finding) for finding in score.findings],
         metadata=dict(score.metadata) if score.metadata is not None else None,
     )
@@ -61,7 +58,7 @@ def _category_response(
         id=score.id,
         label=score.label,
         weight=config.weight,
-        risk_score=score.risk_score,
+        riskScore=score.risk_score,
         coverage=score.coverage,
         sources=[
             _source_response(source_config, source_score)
@@ -72,7 +69,7 @@ def _category_response(
 
 def _scoring_response(result: ScoringResult) -> ScoringResponse:
     return ScoringResponse(
-        overall_risk=result.overall_risk,
+        overallRisk=result.overall_risk,
         coverage=result.coverage,
         categories=[
             _category_response(category_config, category_score)
@@ -84,9 +81,10 @@ def _scoring_response(result: ScoringResult) -> ScoringResponse:
     )
 
 
-def create_mock_analysis(current_url: str | None = None) -> AnalysisResponse:
-    """Build the complete API response from deterministic mock source scores."""
-    result = aggregate_overall(SCORING_CONFIG, mock_source_scores())
+def create_analysis(current_url: str, reddit: SourceScore) -> AnalysisResponse:
+    """Build the API response from the real Reddit score plus mock scores for
+    the sources that don't have collectors yet."""
+    result = aggregate_overall(SCORING_CONFIG, (reddit, *mock_source_scores()))
     return AnalysisResponse(
         store=StoreResponse(domain=_domain_from_url(current_url)),
         scoring=_scoring_response(result),

@@ -19,16 +19,15 @@ _PERMALINK_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Trust score (0-100, higher is better). Each negative post keeps this fraction
-# of the current score, so penalties compound with diminishing effect and the
-# score never hits 0.
+# Each negative post keeps this fraction of the current trust (0-100), so
+# penalties compound with diminishing effect and trust never hits 0.
 _SEVERITY_FACTOR: dict[str, float] = {
     "critical": 0.60,
     "major": 0.75,
     "moderate": 0.85,
     "minor": 0.97,
 }
-_POSITIVE_GAP_CLOSE = 0.10  # each positive post closes this share of the gap to 100
+_POSITIVE_GAP_CLOSE = 0.10  # each positive post closes this share of the trust gap to 100
 
 
 @dataclass
@@ -48,7 +47,7 @@ class RedditFindings:
     thread_id: Optional[str] = None
     raw_research: Optional[str] = None
     error: Optional[str] = None
-    score: Optional[int] = None  # trust score 0-100; None if research failed
+    risk_score: Optional[int] = None  # 0-100, higher is riskier; None if research failed or found no posts
 
 
 _RESEARCH_SYSTEM_PROMPT = (
@@ -76,19 +75,19 @@ _EXTRACTION_INSTRUCTIONS = (
 
 
 def score_reddit(posts: list[RedditPost]) -> int:
-    """Trust score 0-100 (higher is better) from Reddit posts.
+    """Risk score 0-100 (higher is riskier) from Reddit posts.
 
-    S = 100 * (1 - D * (1 - g)^n), where D = 1 - prod(severity factors) is the
-    distrust from negative posts, n is the number of positive posts, and g is
-    _POSITIVE_GAP_CLOSE. Positives are applied after all negatives, so post
-    order doesn't matter.
+    Internally computes trust T = 100 * prod(severity factors), then closes a
+    share g of the gap to 100 per positive post: T' = T + (100 - T) * (1 - (1 - g)^n).
+    Returns 100 - T'. Positives are applied after all negatives, so post order
+    doesn't matter.
     """
-    score = 100.0
+    trust = 100.0
     for post in posts:
-        score *= _SEVERITY_FACTOR.get(post.severity, 1.0)
+        trust *= _SEVERITY_FACTOR.get(post.severity, 1.0)
     positives = sum(post.severity == "positive" for post in posts)
-    score += (100 - score) * (1 - (1 - _POSITIVE_GAP_CLOSE) ** positives)
-    return round(score)
+    trust += (100 - trust) * (1 - (1 - _POSITIVE_GAP_CLOSE) ** positives)
+    return round(100 - trust)
 
 
 async def _verify_url(client: httpx.AsyncClient, url: str) -> bool:
@@ -198,5 +197,5 @@ async def research_reddit(
         posts=posts,
         thread_id=research.thread_id,
         raw_research=research.content,
-        score=score_reddit(posts),
+        risk_score=score_reddit(posts) if posts else None,
     )
