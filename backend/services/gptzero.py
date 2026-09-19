@@ -47,8 +47,6 @@ class ReviewScore:
     ai_prob: float
     predicted_class: str  # 'human' | 'ai' | 'mixed'
     confidence: str  # 'high' | 'medium' | 'low'
-    class_probabilities: dict[str, float] = field(default_factory=dict)
-    burstiness: float | None = None
     error: str | None = None
 
     @property
@@ -76,28 +74,21 @@ class CorpusVerdict:
 
 
 class GPTZeroClient:
-    def __init__(
-        self,
-        api_key: str,
-        http: httpx.AsyncClient | None = None,
-        concurrency: int = 4,
-    ) -> None:
+    def __init__(self, api_key: str, concurrency: int = 4) -> None:
         self._key = api_key
-        self._http = http
-        self._owns_http = http is None
+        self._http: httpx.AsyncClient | None = None
         self._sem = asyncio.Semaphore(concurrency)
         self._cache: dict[str, ReviewScore] = {}
 
     async def __aenter__(self) -> GPTZeroClient:
-        if self._http is None:
-            self._http = httpx.AsyncClient(
-                timeout=httpx.Timeout(30.0, connect=5.0),
-                limits=httpx.Limits(max_connections=8),
-            )
+        self._http = httpx.AsyncClient(
+            timeout=httpx.Timeout(30.0, connect=5.0),
+            limits=httpx.Limits(max_connections=8),
+        )
         return self
 
     async def __aexit__(self, *_exc: object) -> None:
-        if self._owns_http and self._http is not None:
+        if self._http is not None:
             await self._http.aclose()
             self._http = None
 
@@ -163,11 +154,6 @@ def _parse(text: str, payload: dict) -> ReviewScore:
         ai_prob=float(doc.get("completely_generated_prob") or 0.0),
         predicted_class=str(doc.get("predicted_class") or "unknown"),
         confidence=str(doc.get("confidence_category") or "unknown"),
-        class_probabilities={
-            k: float(v or 0.0)
-            for k, v in (doc.get("class_probabilities") or {}).items()
-        },
-        burstiness=doc.get("overall_burstiness"),
     )
 
 
@@ -179,79 +165,6 @@ def _failed(text: str, error: str) -> ReviewScore:
         confidence="unknown",
         error=error,
     )
-
-
-# ----------------------------------------------------------------------
-# offline stand-in
-# ----------------------------------------------------------------------
-
-_SENTENCES = re.compile(r"(?<=[.!?])\s+|\n+")
-_SLOP = (
-    "overall,",
-    "i highly recommend",
-    "highly recommend",
-    "a game changer",
-    "game changer",
-    "exceeded my expectations",
-    "absolutely love",
-    "will definitely be ordering",
-    "outstanding",
-)
-
-
-class StubGPTZeroClient:
-    """Deterministic stand-in so the pipeline runs without a key.
-
-    Keys off traits that genuinely mark LLM marketing prose - even sentence
-    lengths, superlative boilerplate, em-dash density - so demo output stays
-    interpretable rather than random.
-    """
-
-    def __init__(self, *_args: object, **_kwargs: object) -> None:
-        self._cache: dict[str, ReviewScore] = {}
-
-    async def __aenter__(self) -> StubGPTZeroClient:
-        return self
-
-    async def __aexit__(self, *_exc: object) -> None:
-        return None
-
-    async def score(self, text: str) -> ReviewScore:
-        if text in self._cache:
-            return self._cache[text]
-
-        lowered = text.lower()
-        seed = int(hashlib.sha256(text.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
-        prob = 0.05 + 0.15 * seed
-
-        if any(marker in lowered for marker in _SLOP):
-            prob += 0.55
-
-        lengths = [len(s) for s in _SENTENCES.split(text) if s.strip()]
-        if len(lengths) >= 3:
-            spread = statistics.pstdev(lengths) / max(1.0, statistics.fmean(lengths))
-            if spread < 0.35:
-                prob += 0.25
-
-        if text.count("—") >= 2:
-            prob += 0.12
-
-        prob = round(min(0.99, prob), 4)
-        result = ReviewScore(
-            text=text,
-            ai_prob=prob,
-            predicted_class="ai" if prob >= AI_THRESHOLD else "human",
-            confidence="high",
-            class_probabilities={"ai": prob, "human": round(1 - prob, 4)},
-        )
-        self._cache[text] = result
-        return result
-
-    async def score_all(self, texts: list[str]) -> list[ReviewScore]:
-        return [await self.score(t) for t in texts]
-
-
-AnyGPTZero = GPTZeroClient | StubGPTZeroClient
 
 
 # ----------------------------------------------------------------------
