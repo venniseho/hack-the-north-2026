@@ -8,6 +8,7 @@ from backend.agent import agent
 from backend.agent.tools import instagram
 from backend.agent.tools.instagram import InstagramFindings, extract_handle
 from backend.agent.tools.instagram_comments import CommentFindings
+from backend.tests.fakes import FakeLLM
 
 
 class ExtractHandleTests(unittest.TestCase):
@@ -99,7 +100,7 @@ class ResearchInstagramTests(unittest.IsolatedAsyncioTestCase):
             instagram, "find_instagram_handle", AsyncMock(return_value="shop")
         ):
             return await instagram.research_instagram(
-                fake, "https://shop.example"  # type: ignore[arg-type]
+                fake, FakeLLM(), "https://shop.example"  # type: ignore[arg-type]
             )
 
     async def test_comments_on_posts_are_analyzed(self) -> None:
@@ -178,7 +179,7 @@ class ResearchInstagramTests(unittest.IsolatedAsyncioTestCase):
             instagram, "find_instagram_handle", AsyncMock(return_value=None)
         ):
             findings = await instagram.research_instagram(
-                FakeApify([]), "https://shop.example"  # type: ignore[arg-type]
+                FakeApify([]), FakeLLM(), "https://shop.example"  # type: ignore[arg-type]
             )
 
         self.assertIsNone(findings.error)
@@ -256,7 +257,7 @@ class ResearchInstagramFallbackTests(unittest.IsolatedAsyncioTestCase):
     ) -> InstagramFindings:
         with patch.object(instagram, "find_instagram_handle", homepage):
             return await instagram.research_instagram(
-                fake, "https://shop.example/item", brand=brand  # type: ignore[arg-type]
+                fake, FakeLLM(), "https://shop.example/item", brand=brand  # type: ignore[arg-type]
             )
 
     async def test_blocked_homepage_falls_back_to_a_verified_search_hit(self) -> None:
@@ -387,6 +388,7 @@ class ResearchInstagramPageLinksTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(instagram, "find_instagram_handle", homepage):
             return await instagram.research_instagram(
                 fake,  # type: ignore[arg-type]
+                FakeLLM(),  # type: ignore[arg-type]
                 "https://shop.example/item",
                 brand=brand,
                 page_links=page_links,
@@ -433,7 +435,7 @@ class WebsiteLinkBackTests(unittest.IsolatedAsyncioTestCase):
             instagram, "find_instagram_handle", AsyncMock(return_value="shop")
         ):
             return await instagram.research_instagram(
-                fake, "https://www.shop.example/item"  # type: ignore[arg-type]
+                fake, FakeLLM(), "https://www.shop.example/item"  # type: ignore[arg-type]
             )
 
     async def test_a_profile_linking_to_the_store_is_verified(self) -> None:
@@ -476,6 +478,7 @@ class WebsiteLinkBackTests(unittest.IsolatedAsyncioTestCase):
         ):
             findings = await instagram.research_instagram(
                 FakeApify(profile(9_000_000, externalUrl="https://nike.com")),  # type: ignore[arg-type]
+                FakeLLM(),  # type: ignore[arg-type]
                 "https://shop.example/",
                 page_links=["https://www.instagram.com/nike/"],
             )
@@ -496,7 +499,7 @@ class ResearchStoreInstagramTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_successful_results_are_cached_by_domain(self) -> None:
         research = AsyncMock(return_value=InstagramFindings(handle="store"))
-        with patch.object(agent, "get_apify_client"), patch.object(
+        with patch.object(agent, "get_apify_client"), patch.object(agent, "get_client"), patch.object(
             agent, "research_instagram", research
         ):
             first = await agent.research_store_instagram("https://www.store.example/a")
@@ -508,7 +511,7 @@ class ResearchStoreInstagramTests(unittest.IsolatedAsyncioTestCase):
     async def test_page_links_are_passed_to_the_research(self) -> None:
         research = AsyncMock(return_value=InstagramFindings(handle="store"))
         links = ["https://www.instagram.com/store/"]
-        with patch.object(agent, "get_apify_client"), patch.object(
+        with patch.object(agent, "get_apify_client"), patch.object(agent, "get_client"), patch.object(
             agent, "research_instagram", research
         ):
             await agent.research_store_instagram("https://www.store.example/a", links)
@@ -521,7 +524,7 @@ class ResearchStoreInstagramTests(unittest.IsolatedAsyncioTestCase):
         research = AsyncMock(
             return_value=InstagramFindings(comments=CommentFindings(skip_reason="no link"))
         )
-        with patch.object(agent, "get_apify_client"), patch.object(
+        with patch.object(agent, "get_apify_client"), patch.object(agent, "get_client"), patch.object(
             agent, "research_instagram", research
         ):
             await agent.research_store_instagram("https://store.example")
@@ -531,7 +534,7 @@ class ResearchStoreInstagramTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_errors_are_not_cached(self) -> None:
         research = AsyncMock(side_effect=RuntimeError("apify down"))
-        with patch.object(agent, "get_apify_client"), patch.object(
+        with patch.object(agent, "get_apify_client"), patch.object(agent, "get_client"), patch.object(
             agent, "research_instagram", research
         ):
             await agent.research_store_instagram("https://store.example")

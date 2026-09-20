@@ -1,12 +1,14 @@
+from collections import Counter
+
 from ...agent.tools.instagram import InstagramFindings
-from ...agent.tools.instagram_comments import DUPLICATE_MIN_AUTHORS
+from ...agent.tools.instagram_comments import DUPLICATE_MIN_AUTHORS, MAX_QUOTES
 from ..types import ScoreStatus, ScoringFinding, SourceScore
 
 COMMENTS_SOURCE_ID = "instagram-comments"
 COMMENTS_LABEL = "Instagram Comments"
 
 _MAX_QUOTE_CHARS = 120
-_SAMPLE_COUNT = 3
+_QUOTE_COUNT = MAX_QUOTES
 
 
 def _quote(text: str, limit: int = _MAX_QUOTE_CHARS) -> str:
@@ -48,24 +50,31 @@ def score_instagram_comments(findings: InstagramFindings) -> SourceScore:
 
     if comments.complaint_risk > 0:
         complaints = comments.complaints
+        # The LLM's own breakdown, with its one or two best examples quoted.
+        quotes = comments.complaint_quotes or complaints[:_QUOTE_COUNT]
+        explanation = comments.complaint_summary or (
+            f"{len(complaints)} of {analyzed} comments on @{handle}'s posts "
+            "report problems."
+        )
+        if quotes:
+            explanation += " e.g. " + " / ".join(
+                f"“{_quote(c.text)}”" for c in quotes
+            )
         found.append(
             ScoringFinding(
                 rule_id="INSTAGRAM_COMPLAINT_COMMENTS",
                 title="Customers are complaining in the comments",
-                explanation=(
-                    f"{len(complaints)} comments on recent posts by"
-                    f"@{handle} report problems,"
-                    f"e.g. “{_quote(complaints[0].text)}”"
-                ),
+                explanation=explanation,
                 impact=float(comments.complaint_risk),
                 metadata={
                     "url": profile_url,
                     "handle": handle,
                     "complaints": len(complaints),
                     "comments_analyzed": analyzed,
+                    "categories": dict(Counter(c.category for c in complaints)),
                     "samples": [
                         {"text": _quote(c.text, 300), "post_url": c.post_url}
-                        for c in complaints[:_SAMPLE_COUNT]
+                        for c in quotes
                     ],
                 },
             )

@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 
 import httpx
 from apify_client import ApifyClientAsync
+from backboard import BackboardClient
 
 from .instagram_comments import CommentFindings, analyze_comments, parse_comments
 
@@ -249,13 +250,14 @@ def _skipped(
 
 async def research_instagram(
     apify: ApifyClientAsync,
+    llm: BackboardClient,
     store_url: str,
     *,
     brand: Optional[str] = None,
     page_links: Sequence[str] = (),
 ) -> InstagramFindings:
     """Score the store's Instagram account by what the comments on its own
-    posts say.
+    posts say. Apify fetches them; llm judges them.
 
     The account is found from, in order: Instagram links the browser extension
     read off the live page (page_links), the store homepage's Instagram link,
@@ -378,7 +380,7 @@ async def research_instagram(
         findings.comments = CommentFindings(error=f"posts run failed: {post_items}")
         return findings
 
-    findings.comments = analyze_comments(parse_comments(post_items, handle))
+    findings.comments = await analyze_comments(llm, parse_comments(post_items, handle))
     logger.info(
         "Instagram @%s: %d comment(s) analyzed, %d complaint(s), risk=%s",
         handle,

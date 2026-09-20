@@ -7,7 +7,6 @@ from backend.agent.tools.instagram import InstagramFindings
 from backend.agent.tools.instagram_comments import (
     CommentFindings,
     InstagramComment,
-    analyze_comments,
 )
 from backend.agent.tools.reddit import RedditFindings, RedditPost
 from backend.api.app import app
@@ -31,9 +30,19 @@ def unscored_instagram() -> InstagramFindings:
 
 
 def scam_comments() -> CommentFindings:
-    calm = [InstagramComment(f"fan{i}", f"lovely piece number {i}") for i in range(9)]
-    angry = [InstagramComment(n, "Total scam, never received it") for n in "abc"]
-    return analyze_comments(calm + angry)  # 3 of 12 complaining: risk 95
+    """3 of 12 comments complaining: risk 95."""
+    angry = [
+        InstagramComment(n, "Total scam, never received it", category="scam_accusation")
+        for n in "abc"
+    ]
+    return CommentFindings(
+        analyzed=12,
+        complaints=angry,
+        complaint_summary="3 of 12 comments say the store is a scam.",
+        complaint_quotes=angry[:2],
+        complaint_risk=95,
+        risk_score=95,
+    )
 
 
 def scam_instagram() -> InstagramFindings:
