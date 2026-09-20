@@ -10,7 +10,7 @@ SCORING_CONFIG = ScoringConfig(
         CategoryScoringConfig(
             id="third-party-reviews",
             label="Third-Party Reviews",
-            weight=0.4,
+            weight=0.5,
             sources=(
                 SourceScoringConfig(
                     id="reddit",
@@ -22,7 +22,7 @@ SCORING_CONFIG = ScoringConfig(
         CategoryScoringConfig(
             id="site-analysis",
             label="Site Analysis",
-            weight=0.3,
+            weight=0.1,
             sources=(
                 SourceScoringConfig(
                     id="gptzero",
@@ -34,7 +34,7 @@ SCORING_CONFIG = ScoringConfig(
         CategoryScoringConfig(
             id="social-proof",
             label="Social Proof",
-            weight=0.3,
+            weight=0.4,
             sources=(
                 SourceScoringConfig(
                     id="instagram-comments",

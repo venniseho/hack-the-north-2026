@@ -147,7 +147,7 @@ function IdleState({ onRun }: { onRun: (request?: AnalysisRequest) => void }) {
           onClick={() => onRun({ mode: "standard" })}
           className="mt-4 w-full rounded-md bg-[#007889] px-3 py-2 text-sm font-black text-white shadow-sm transition hover:bg-[#026876] focus:outline-none focus:ring-2 focus:ring-[#007889] focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#082a31]"
         >
-          Run Sham Scanner
+          Run Sham
         </button>
       </section>
     </div>
