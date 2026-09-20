@@ -1,3 +1,4 @@
+import { Mascot } from '@/src/components/Shared/Mascot';
 import type { ScamAnalysis } from '@/src/types/analysis';
 
 interface HeaderProps {
@@ -24,6 +25,8 @@ export function Header({ analysis, theme, onToggleTheme, onBack }: HeaderProps) 
               Back
             </button>
           )}
+
+          <Mascot className="mt-1.5 h-12 w-auto shrink-0" />
 
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-wide text-[#007889] dark:text-teal-300">
