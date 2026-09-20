@@ -37,7 +37,7 @@ _cache: dict[str, tuple[float, RedditFindings]] = {}
 _client: BackboardClient | None = None
 
 # Worst case: a homepage fetch (10s), then an Instagram search when the
-# homepage is blocked (one 60s run), then three parallel runs (60s). Typical is
+# homepage is blocked (one 60s run), then two parallel runs (60s). Typical is
 # far shorter. Every cache miss spends Apify credit, hence the long TTL.
 INSTAGRAM_TIMEOUT_SECONDS = 130.0
 INSTAGRAM_CACHE_TTL_SECONDS = 6 * 60 * 60
@@ -129,7 +129,7 @@ async def research_store(current_url: str) -> RedditFindings:
 async def research_store_instagram(
     current_url: str, instagram_links: Sequence[str] = ()
 ) -> InstagramFindings:
-    """Check the store's Instagram tags and the comments on its posts.
+    """Check the comments on the store's Instagram posts.
     instagram_links are Instagram URLs the browser extension read off the page.
     Never raises: failures come back as InstagramFindings with error set."""
     domain = domain_from_url(current_url)

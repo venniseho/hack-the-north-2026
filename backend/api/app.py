@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..agent.agent import research_store, research_store_instagram
-from ..scoring.sources.instagram import score_instagram, score_instagram_comments
+from ..scoring.sources.instagram import score_instagram_comments
 from ..scoring.sources.reddit import score_reddit
 from .analysis import create_analysis
 from .models import AnalysisResponse, AnalyzeRequest
@@ -37,5 +37,5 @@ async def analyze(request: AnalyzeRequest) -> AnalysisResponse:
     return create_analysis(
         request.current_url,
         score_reddit(reddit),
-        (score_instagram(instagram), score_instagram_comments(instagram)),
+        score_instagram_comments(instagram),
     )

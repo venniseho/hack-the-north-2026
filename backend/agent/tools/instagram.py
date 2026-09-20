@@ -1,10 +1,8 @@
 """Instagram evidence gathering via Apify's instagram-scraper actor.
 
-The signal is social proof: do real accounts tag the store, and what do the
-comments on its own posts say? Scam stores tend to have an Instagram page but
-no organic tags from customers or creators. Tags only mean something relative
-to the account's size, so each check runs three Apify jobs in parallel —
-profile details (follower count), tagged posts, and the store's own posts.
+The signal is social proof: what do the comments on the store's own posts say?
+Each check runs two Apify jobs in parallel — profile details, and the store's
+own posts (whose comments are analyzed in instagram_comments).
 
 The account is found by scraping the store's homepage for its Instagram link,
 falling back to an Instagram search when the homepage is blocked or has none.
@@ -16,7 +14,7 @@ import re
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any, Optional
 from urllib.parse import urlparse
@@ -32,25 +30,12 @@ _ACTOR_ID = "apify/instagram-scraper"
 _RUN_TIMEOUT = timedelta(seconds=60)
 _MAX_CHARGE_USD = Decimal("0.25")  # hard spend cap per Apify run
 
-# The scraper returns the newest tags first, so a large brand hits this limit
-# within hours; that's fine, we only need to know there are "enough".
-TAG_LIMIT = 20
-TAG_WINDOW_DAYS = 90
 # Each post carries up to ~15 of its latest comments, so this bounds the
 # comment sample at roughly 180.
 POSTS_LIMIT = 12
 # The search fans out to every candidate profile, so it's the slowest run (44s
 # in testing); the handful of top hits is enough to find a brand's own account.
 SEARCH_LIMIT = 5
-
-# Below this the account is too small or new to judge fairly by its tags.
-MIN_FOLLOWERS = 100
-# A healthy store is expected to have one distinct recent tagger per this many
-# followers, capped so huge brands aren't held to an absurd bar.
-_FOLLOWERS_PER_EXPECTED_TAGGER = 1_000
-_MAX_EXPECTED_TAGGERS = 10
-# Zero tags is a warning sign, not proof of a scam, so risk never reaches 100.
-_MAX_RISK = 100
 
 _HANDLE_RE = re.compile(
     r"instagram\.com\\?/([A-Za-z0-9._]{1,30})(?![A-Za-z0-9._])", re.IGNORECASE
@@ -86,13 +71,6 @@ _NEUTRAL_SITES = {
 
 
 @dataclass
-class InstagramTag:
-    owner: str  # the account that tagged the store
-    url: Optional[str] = None
-    timestamp: Optional[datetime] = None
-
-
-@dataclass
 class InstagramFindings:
     handle: Optional[str] = None
     followers: Optional[int] = None
@@ -100,45 +78,10 @@ class InstagramFindings:
     # Whether the profile's website links back to the store: True yes, False it
     # points elsewhere, None no evidence either way (no website, link-in-bio).
     website_match: Optional[bool] = None
-    tags: list[InstagramTag] = field(default_factory=list)
-    recent_taggers: int = 0  # distinct accounts that tagged within TAG_WINDOW_DAYS
-    expected_taggers: Optional[int] = None
-    # Why no score was produced when nothing went wrong (no link, private, tiny).
-    skip_reason: Optional[str] = None
-    error: Optional[str] = None  # the whole check failed (both signals)
-    tags_error: Optional[str] = None  # only the tagged-posts run failed
-    risk_score: Optional[int] = None  # 0-100, higher is riskier; None if unscored
-    # Comments on the store's own posts, scored independently of the tags.
+    error: Optional[str] = None  # the whole check failed
+    # The comments on the store's own posts. Also carries the reason nothing was
+    # scored when nothing went wrong (no link, private, too few comments).
     comments: CommentFindings = field(default_factory=CommentFindings)
-
-
-def expected_taggers(followers: int) -> int:
-    """Distinct recent taggers a store of this size should have (at least 1)."""
-    return round(
-        min(max(followers / _FOLLOWERS_PER_EXPECTED_TAGGER, 1), _MAX_EXPECTED_TAGGERS)
-    )
-
-
-def count_recent_taggers(
-    tags: list[InstagramTag], now: Optional[datetime] = None
-) -> int:
-    """Distinct accounts that tagged within the window. Tags without a
-    timestamp can't be placed in the window, so they don't count."""
-    cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=TAG_WINDOW_DAYS)
-    return len(
-        {
-            tag.owner.lower()
-            for tag in tags
-            if tag.timestamp is not None and tag.timestamp >= cutoff
-        }
-    )
-
-
-def tag_risk_score(followers: int, recent_taggers: int) -> int:
-    """Risk 0-_MAX_RISK: how far short of the expected number of taggers the
-    store falls, scaled linearly. Meeting expectations scores 0."""
-    coverage = min(recent_taggers / expected_taggers(followers), 1.0)
-    return round(_MAX_RISK * (1 - coverage))
 
 
 def extract_handle(html: str) -> Optional[str]:
@@ -289,45 +232,17 @@ async def _resolved(value: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return value
 
 
-def _parse_timestamp(value: Any) -> Optional[datetime]:
-    if not isinstance(value, str):
-        return None
-    try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError:
-        return None
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
-
-
-def _parse_tags(items: list[dict[str, Any]], handle: str) -> list[InstagramTag]:
-    tags = []
-    for item in items:
-        owner = (item.get("ownerUsername") or "").strip()
-        # Error placeholders have no owner; the store tagging itself isn't proof.
-        if not owner or owner.lower() == handle.lower():
-            continue
-        tags.append(
-            InstagramTag(
-                owner=owner,
-                url=item.get("url"),
-                timestamp=_parse_timestamp(item.get("timestamp")),
-            )
-        )
-    return tags
-
-
 def _skipped(
     reason: str,
     handle: Optional[str] = None,
     followers: Optional[int] = None,
     verified: bool = False,
 ) -> InstagramFindings:
-    """An account-level outcome that leaves both signals unscored."""
+    """An account-level outcome that leaves the comments unscored."""
     return InstagramFindings(
         handle=handle,
         followers=followers,
         verified=verified,
-        skip_reason=reason,
         comments=CommentFindings(skip_reason=reason),
     )
 
@@ -339,8 +254,8 @@ async def research_instagram(
     brand: Optional[str] = None,
     page_links: Sequence[str] = (),
 ) -> InstagramFindings:
-    """Score the store's Instagram account on two signals: how much organic
-    tagging it gets, and what the comments on its own posts say.
+    """Score the store's Instagram account by what the comments on its own
+    posts say.
 
     The account is found from, in order: Instagram links the browser extension
     read off the live page (page_links), the store homepage's Instagram link,
@@ -349,9 +264,9 @@ async def research_instagram(
     Whatever the route, a profile whose website points at a different site is
     not scored: it may be a reputable account the page borrowed.
 
-    Failures (network, Apify) raise, except a failed tags or posts run, which
-    only marks its own signal as errored. "Nothing to score" outcomes come
-    back as findings with skip_reason set.
+    Failures (network, Apify) raise, except a failed posts run, which only
+    marks the comments as errored. "Nothing to score" outcomes come back as
+    findings whose comments have skip_reason set.
     """
     handle = extract_handle("\n".join(page_links)) if page_links else None
     if handle:
@@ -399,20 +314,11 @@ async def research_instagram(
         if profile is None
         else _resolved([profile])
     )
-    details_items, tag_items, post_items = await asyncio.gather(
+    details_items, post_items = await asyncio.gather(
         details_call,
-        _run_actor(
-            apify,
-            {
-                "resultsType": "mentions",
-                "directUrls": [profile_url],
-                "resultsLimit": TAG_LIMIT,
-            },
-            max_items=TAG_LIMIT,
-        ),
         # The comments score is a share of complaints, so a run that times out
         # after saving most of the posts still gives a usable (if slightly
-        # noisier) answer. Tags are an absolute count and must not do this.
+        # noisier) answer.
         _run_actor(
             apify,
             {
@@ -425,10 +331,9 @@ async def research_instagram(
         ),
         return_exceptions=True,
     )
-    # Profile details are required: both signals need to know the account
-    # exists and is public. The tags and posts runs each feed one signal, so
-    # one failing (Instagram scrapes time out now and then) mustn't take the
-    # other's score down with it.
+    # Profile details are required: we need to know the account exists and is
+    # public. The posts run only feeds the comments, so its failure (Instagram
+    # scrapes time out now and then) is reported there rather than raised.
     if isinstance(details_items, BaseException):
         raise details_items
 
@@ -462,7 +367,7 @@ async def research_instagram(
             verified=verified,
         )
 
-    base = InstagramFindings(
+    findings = InstagramFindings(
         handle=handle,
         followers=followers,
         verified=verified,
@@ -470,38 +375,15 @@ async def research_instagram(
     )
     if isinstance(post_items, BaseException):
         logger.warning("Instagram posts run for @%s failed: %r", handle, post_items)
-        base.comments = CommentFindings(error=f"posts run failed: {post_items}")
-    else:
-        base.comments = analyze_comments(parse_comments(post_items, handle))
-        logger.info(
-            "Instagram @%s: %d comment(s) analyzed, %d complaint(s), risk=%s",
-            handle,
-            base.comments.analyzed,
-            len(base.comments.complaints),
-            base.comments.risk_score,
-        )
+        findings.comments = CommentFindings(error=f"posts run failed: {post_items}")
+        return findings
 
-    # A tiny account can't be judged by its tags, but its comments still count.
-    if followers < MIN_FOLLOWERS:
-        base.skip_reason = f"@{handle} has too few followers ({followers}) to judge"
-        return base
-
-    if isinstance(tag_items, BaseException):
-        logger.warning("Instagram tags run for @%s failed: %r", handle, tag_items)
-        base.tags_error = f"tags run failed: {tag_items}"
-        return base
-
-    tags = _parse_tags(tag_items, handle)
-    recent = count_recent_taggers(tags)
+    findings.comments = analyze_comments(parse_comments(post_items, handle))
     logger.info(
-        "Instagram @%s: %d followers, %d tag(s) fetched, %d distinct recent tagger(s)",
+        "Instagram @%s: %d comment(s) analyzed, %d complaint(s), risk=%s",
         handle,
-        followers,
-        len(tags),
-        recent,
+        findings.comments.analyzed,
+        len(findings.comments.complaints),
+        findings.comments.risk_score,
     )
-    base.tags = tags
-    base.recent_taggers = recent
-    base.expected_taggers = expected_taggers(followers)
-    base.risk_score = tag_risk_score(followers, recent)
-    return base
+    return findings

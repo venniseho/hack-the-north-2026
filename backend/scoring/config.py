@@ -42,15 +42,9 @@ SCORING_CONFIG = ScoringConfig(
             weight=0.3,
             sources=(
                 SourceScoringConfig(
-                    id="instagram-tags",
-                    label="Instagram Tags",
-                    weight=0.4,
-                ),
-                # Direct customer reports outweigh the absence of tags.
-                SourceScoringConfig(
                     id="instagram-comments",
                     label="Instagram Comments",
-                    weight=0.6,
+                    weight=1.0,
                 ),
             ),
         ),

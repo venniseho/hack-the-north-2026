@@ -1,5 +1,4 @@
 import unittest
-from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -7,26 +6,8 @@ import httpx
 
 from backend.agent import agent
 from backend.agent.tools import instagram
-from backend.agent.tools.instagram import (
-    InstagramFindings,
-    InstagramTag,
-    count_recent_taggers,
-    expected_taggers,
-    extract_handle,
-    tag_risk_score,
-)
-from backend.scoring.sources.instagram import score_instagram, score_instagram_comments
-from backend.scoring.types import ScoreStatus
-
-NOW = datetime(2026, 9, 19, tzinfo=timezone.utc)
-
-
-def tag(owner: str, days_ago: float | None) -> InstagramTag:
-    return InstagramTag(
-        owner=owner,
-        url=f"https://www.instagram.com/p/{owner}/",
-        timestamp=None if days_ago is None else NOW - timedelta(days=days_ago),
-    )
+from backend.agent.tools.instagram import InstagramFindings, extract_handle
+from backend.agent.tools.instagram_comments import CommentFindings
 
 
 class ExtractHandleTests(unittest.TestCase):
@@ -58,45 +39,18 @@ class ExtractHandleTests(unittest.TestCase):
         self.assertIsNone(extract_handle("<html>facebook.com/shop</html>"))
 
 
-class TagScoringTests(unittest.TestCase):
-    def test_expected_taggers_scales_with_followers_and_is_capped(self) -> None:
-        self.assertEqual(expected_taggers(100), 1)
-        self.assertEqual(expected_taggers(5_000), 5)
-        self.assertEqual(expected_taggers(8_000_000), 10)
-
-    def test_recent_taggers_are_distinct_case_insensitive_and_windowed(self) -> None:
-        tags = [
-            tag("Alice", 1),
-            tag("alice", 5),  # same account
-            tag("bob", 89),
-            tag("carol", 91),  # outside the window
-            tag("dave", None),  # no timestamp
-        ]
-        self.assertEqual(count_recent_taggers(tags, now=NOW), 2)
-
-    def test_no_tags_scores_maximum_risk(self) -> None:
-        self.assertEqual(tag_risk_score(5_000, 0), 100)
-
-    def test_risk_falls_linearly_to_zero_at_expectation(self) -> None:
-        self.assertEqual(tag_risk_score(10_000, 4), 60)  # expects 10
-        self.assertEqual(tag_risk_score(10_000, 10), 0)
-        self.assertEqual(tag_risk_score(10_000, 50), 0)  # more than enough
-
-
 class FakeApify:
     """Stands in for ApifyClientAsync; each resultsType gets its own dataset."""
 
     def __init__(
         self,
         details: list[dict],
-        mentions: list[dict],
         posts: list[dict] | None = None,
         search: list[dict] | None = None,
         statuses: dict[str, str] | None = None,
     ) -> None:
         self._datasets = {
             "details": details,
-            "mentions": mentions,
             "posts": posts or [],
             "search": search or [],
         }
@@ -122,150 +76,8 @@ class FakeApify:
         return SimpleNamespace(list_items=list_items)
 
 
-def mention(owner: str, days_ago: float) -> dict:
-    when = datetime.now(timezone.utc) - timedelta(days=days_ago)
-    return {
-        "ownerUsername": owner,
-        "url": f"https://www.instagram.com/p/{owner}/",
-        "timestamp": when.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-    }
-
-
 def profile(followers: int, **extra: object) -> list[dict]:
     return [{"username": "shop", "followersCount": followers, **extra}]
-
-
-class ResearchInstagramTagsTests(unittest.IsolatedAsyncioTestCase):
-    async def research(
-        self, fake: FakeApify, handle: str | None = "shop"
-    ) -> InstagramFindings:
-        with patch.object(
-            instagram, "find_instagram_handle", AsyncMock(return_value=handle)
-        ):
-            return await instagram.research_instagram(
-                fake, "https://shop.example"  # type: ignore[arg-type]
-            )
-
-    async def test_scores_tags_against_followers(self) -> None:
-        fake = FakeApify(
-            profile(5_000, verified=True),
-            [mention("alice", 2), mention("bob", 10), mention("carol", 30)],
-        )
-        findings = await self.research(fake)
-
-        self.assertEqual(findings.handle, "shop")
-        self.assertEqual(findings.followers, 5_000)
-        self.assertTrue(findings.verified)
-        self.assertEqual(findings.recent_taggers, 3)
-        self.assertEqual(findings.expected_taggers, 5)
-        self.assertEqual(findings.risk_score, 40)  # 100 * (1 - 3/5)
-        self.assertEqual(
-            {i["resultsType"] for i in fake.inputs}, {"details", "mentions", "posts"}
-        )
-        self.assertTrue(
-            all(i["directUrls"] == ["https://www.instagram.com/shop/"] for i in fake.inputs)
-        )
-
-    async def test_the_store_tagging_itself_does_not_count(self) -> None:
-        fake = FakeApify(profile(5_000), [mention("Shop", 1), mention("alice", 1)])
-        findings = await self.research(fake)
-
-        self.assertEqual([t.owner for t in findings.tags], ["alice"])
-
-    async def test_error_placeholders_are_ignored(self) -> None:
-        fake = FakeApify(profile(5_000), [{"error": "no_items"}])
-        findings = await self.research(fake)
-
-        self.assertEqual(findings.tags, [])
-        self.assertEqual(findings.risk_score, 100)
-
-    async def test_no_handle_is_skipped_not_an_error(self) -> None:
-        findings = await self.research(FakeApify([], []), handle=None)
-
-        self.assertIsNone(findings.error)
-        self.assertIsNone(findings.risk_score)
-        self.assertIn("no Instagram link", findings.skip_reason or "")
-
-    async def test_missing_profile_is_skipped(self) -> None:
-        fake = FakeApify([{"error": "not_found"}], [])
-        findings = await self.research(fake)
-
-        self.assertIsNone(findings.risk_score)
-        self.assertIn("not found", findings.skip_reason or "")
-
-    async def test_private_account_is_skipped(self) -> None:
-        findings = await self.research(FakeApify(profile(5_000, private=True), []))
-
-        self.assertIsNone(findings.risk_score)
-        self.assertIn("private", findings.skip_reason or "")
-
-    async def test_tiny_account_is_skipped(self) -> None:
-        findings = await self.research(FakeApify(profile(12), []))
-
-        self.assertIsNone(findings.risk_score)
-        self.assertEqual(findings.followers, 12)
-        self.assertIn("too few followers", findings.skip_reason or "")
-
-    async def test_failed_actor_run_raises(self) -> None:
-        class FailingApify(FakeApify):
-            def actor(self, actor_id: str) -> SimpleNamespace:
-                async def call(**_: object) -> SimpleNamespace:
-                    return SimpleNamespace(status="FAILED", default_dataset_id="x")
-
-                return SimpleNamespace(call=call)
-
-        with self.assertRaises(RuntimeError):
-            await self.research(FailingApify([], []))
-
-
-def scored(taggers: int, expected: int = 5, followers: int = 5_000) -> InstagramFindings:
-    return InstagramFindings(
-        handle="shop",
-        followers=followers,
-        tags=[tag("alice", 1)],
-        recent_taggers=taggers,
-        expected_taggers=expected,
-        risk_score=tag_risk_score(followers, taggers),
-    )
-
-
-class ScoreInstagramTests(unittest.TestCase):
-    def test_no_tags_is_a_high_risk_finding(self) -> None:
-        score = score_instagram(scored(0))
-
-        self.assertEqual(score.status, ScoreStatus.AVAILABLE)
-        self.assertEqual(score.risk_score, 100)
-        self.assertEqual(score.findings[0].rule_id, "INSTAGRAM_NO_TAGS")
-        self.assertEqual(score.findings[0].impact, 100)
-
-    def test_few_tags_is_a_partial_finding(self) -> None:
-        score = score_instagram(scored(2))
-
-        self.assertEqual(score.findings[0].rule_id, "INSTAGRAM_FEW_TAGS")
-        self.assertEqual(score.risk_score, 60)
-
-    def test_enough_tags_is_a_positive_finding(self) -> None:
-        score = score_instagram(scored(6))
-
-        self.assertEqual(score.risk_score, 0)
-        self.assertEqual(score.findings[0].rule_id, "INSTAGRAM_ORGANIC_TAGS")
-        self.assertEqual(score.findings[0].impact, 0)
-        self.assertEqual(
-            score.findings[0].metadata["url"], "https://www.instagram.com/shop/"
-        )
-
-    def test_unscored_is_insufficient_data_not_safe(self) -> None:
-        score = score_instagram(InstagramFindings(skip_reason="no link"))
-
-        self.assertEqual(score.status, ScoreStatus.INSUFFICIENT_DATA)
-        self.assertIsNone(score.risk_score)
-        self.assertEqual(score.metadata["reason"], "no link")
-
-    def test_error_is_reported_as_error(self) -> None:
-        score = score_instagram(InstagramFindings(error="boom"))
-
-        self.assertEqual(score.status, ScoreStatus.ERROR)
-        self.assertEqual(score.metadata["error"], "boom")
 
 
 def post_with_comments(url: str, comments: list[tuple[str, str]]) -> dict:
@@ -281,7 +93,7 @@ def twelve_comments_three_angry() -> list[dict]:
     return [post_with_comments("https://www.instagram.com/p/one/", calm + angry)]
 
 
-class ResearchInstagramCommentsTests(unittest.IsolatedAsyncioTestCase):
+class ResearchInstagramTests(unittest.IsolatedAsyncioTestCase):
     async def research(self, fake: FakeApify) -> InstagramFindings:
         with patch.object(
             instagram, "find_instagram_handle", AsyncMock(return_value="shop")
@@ -291,12 +103,19 @@ class ResearchInstagramCommentsTests(unittest.IsolatedAsyncioTestCase):
             )
 
     async def test_comments_on_posts_are_analyzed(self) -> None:
-        fake = FakeApify(profile(5_000), [], twelve_comments_three_angry())
+        fake = FakeApify(profile(5_000, verified=True), twelve_comments_three_angry())
         findings = await self.research(fake)
 
+        self.assertEqual(findings.handle, "shop")
+        self.assertEqual(findings.followers, 5_000)
+        self.assertTrue(findings.verified)
         self.assertEqual(findings.comments.analyzed, 12)
         self.assertEqual(len(findings.comments.complaints), 3)
         self.assertEqual(findings.comments.risk_score, 95)
+        self.assertEqual({i["resultsType"] for i in fake.inputs}, {"details", "posts"})
+        self.assertTrue(
+            all(i["directUrls"] == ["https://www.instagram.com/shop/"] for i in fake.inputs)
+        )
         posts_run = next(i for i in fake.inputs if i["resultsType"] == "posts")
         self.assertEqual(posts_run["resultsLimit"], instagram.POSTS_LIMIT)
 
@@ -312,17 +131,16 @@ class ResearchInstagramCommentsTests(unittest.IsolatedAsyncioTestCase):
 
                 return SimpleNamespace(call=call)
 
-        findings = await self.research(PostsFail(profile(5_000), []))
+        findings = await self.research(PostsFail(profile(5_000)))
 
         self.assertIsNone(findings.error)
-        self.assertEqual(findings.risk_score, 100)  # tags still scored
+        self.assertEqual(findings.handle, "shop")
         self.assertIn("posts blew up", findings.comments.error or "")
 
     async def test_a_timed_out_posts_run_still_scores_its_partial_comments(self) -> None:
         # The run stalls on its last posts after saving most of them.
         fake = FakeApify(
             profile(5_000),
-            [],
             twelve_comments_three_angry(),
             statuses={"posts": "TIMED-OUT"},
         )
@@ -333,49 +151,23 @@ class ResearchInstagramCommentsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(findings.comments.risk_score, 95)
 
     async def test_a_timed_out_posts_run_with_nothing_saved_errors_the_comments(self) -> None:
-        fake = FakeApify(profile(5_000), [], statuses={"posts": "TIMED-OUT"})
+        fake = FakeApify(profile(5_000), statuses={"posts": "TIMED-OUT"})
         findings = await self.research(fake)
 
         self.assertIn("timed out before returning", findings.comments.error or "")
-        self.assertEqual(findings.risk_score, 100)  # tags unaffected
-
-    async def test_a_failed_tags_run_only_errors_the_tags(self) -> None:
-        class TagsFail(FakeApify):
-            def actor(self, actor_id: str) -> SimpleNamespace:
-                inner = super().actor(actor_id)
-
-                async def call(*, run_input: dict, **kwargs: object) -> SimpleNamespace:
-                    if run_input["resultsType"] == "mentions":
-                        raise RuntimeError("tags timed out")
-                    return await inner.call(run_input=run_input, **kwargs)
-
-                return SimpleNamespace(call=call)
-
-        findings = await self.research(
-            TagsFail(profile(5_000), [], twelve_comments_three_angry())
-        )
-
-        self.assertIsNone(findings.error)
-        self.assertIn("tags timed out", findings.tags_error or "")
-        self.assertIsNone(findings.risk_score)
-        self.assertEqual(findings.comments.risk_score, 95)  # comments unaffected
-        self.assertEqual(score_instagram(findings).status, ScoreStatus.ERROR)
-        self.assertEqual(
-            score_instagram_comments(findings).status, ScoreStatus.AVAILABLE
-        )
 
     async def test_a_tiny_account_still_gets_its_comments_scored(self) -> None:
-        fake = FakeApify(profile(12), [], twelve_comments_three_angry())
+        fake = FakeApify(profile(12), twelve_comments_three_angry())
         findings = await self.research(fake)
 
-        self.assertIsNone(findings.risk_score)  # too small to judge by tags
+        self.assertEqual(findings.followers, 12)
         self.assertEqual(findings.comments.risk_score, 95)
 
     async def test_private_and_missing_accounts_skip_comments_too(self) -> None:
         private = await self.research(
-            FakeApify(profile(5_000, private=True), [], twelve_comments_three_angry())
+            FakeApify(profile(5_000, private=True), twelve_comments_three_angry())
         )
-        missing = await self.research(FakeApify([{"error": "not_found"}], []))
+        missing = await self.research(FakeApify([{"error": "not_found"}]))
 
         self.assertIn("private", private.comments.skip_reason or "")
         self.assertIsNone(private.comments.risk_score)
@@ -386,10 +178,22 @@ class ResearchInstagramCommentsTests(unittest.IsolatedAsyncioTestCase):
             instagram, "find_instagram_handle", AsyncMock(return_value=None)
         ):
             findings = await instagram.research_instagram(
-                FakeApify([], []), "https://shop.example"  # type: ignore[arg-type]
+                FakeApify([]), "https://shop.example"  # type: ignore[arg-type]
             )
 
+        self.assertIsNone(findings.error)
         self.assertIn("no Instagram link", findings.comments.skip_reason or "")
+
+    async def test_failed_actor_run_raises(self) -> None:
+        class FailingApify(FakeApify):
+            def actor(self, actor_id: str) -> SimpleNamespace:
+                async def call(**_: object) -> SimpleNamespace:
+                    return SimpleNamespace(status="FAILED", default_dataset_id="x")
+
+                return SimpleNamespace(call=call)
+
+        with self.assertRaises(RuntimeError):
+            await self.research(FailingApify([]))
 
 
 def candidate(username: str, followers: int, website: str | None = None) -> dict:
@@ -458,7 +262,6 @@ class ResearchInstagramFallbackTests(unittest.IsolatedAsyncioTestCase):
     async def test_blocked_homepage_falls_back_to_a_verified_search_hit(self) -> None:
         fake = FakeApify(
             [],
-            [],
             twelve_comments_three_angry(),
             search=[
                 candidate("shopfashion", 900),  # lookalike, no website
@@ -476,11 +279,10 @@ class ResearchInstagramFallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(search["searchType"], "user")
         # The search already returned the profile, so there's no details run.
         other = sorted(i["resultsType"] for i in fake.inputs if "search" not in i)
-        self.assertEqual(other, ["mentions", "posts"])
+        self.assertEqual(other, ["posts"])
 
     async def test_lookalike_accounts_are_never_scored(self) -> None:
         fake = FakeApify(
-            [],
             [],
             search=[
                 candidate("shopfashion", 900),
@@ -491,14 +293,14 @@ class ResearchInstagramFallbackTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(findings.error)
         self.assertIsNone(findings.handle)
-        self.assertIn("couldn't read the store's homepage", findings.skip_reason or "")
-        self.assertIn("no Instagram profile", findings.skip_reason or "")
+        skip_reason = findings.comments.skip_reason or ""
+        self.assertIn("couldn't read the store's homepage", skip_reason)
+        self.assertIn("no Instagram profile", skip_reason)
         self.assertEqual(len(fake.inputs), 1)  # only the search ran
 
     async def test_a_timed_out_search_still_uses_its_partial_results(self) -> None:
         # The run stalls on its last profile after the useful ones are saved.
         fake = FakeApify(
-            [],
             [],
             twelve_comments_three_angry(),
             search=[
@@ -513,28 +315,13 @@ class ResearchInstagramFallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(findings.handle, "shop")
 
     async def test_a_timed_out_search_with_nothing_saved_is_a_failure(self) -> None:
-        fake = FakeApify([], [], statuses={"search": "TIMED-OUT"})
+        fake = FakeApify([], statuses={"search": "TIMED-OUT"})
 
         with self.assertRaises(RuntimeError):
             await self.research(fake, blocked())
 
-    async def test_a_timed_out_tags_run_is_not_trusted_partially(self) -> None:
-        # A partial tag list would understate the taggers and inflate risk.
-        fake = FakeApify(
-            profile(5_000),
-            [mention("alice", 2)],
-            twelve_comments_three_angry(),
-            statuses={"mentions": "TIMED-OUT"},
-        )
-        findings = await self.research(fake, AsyncMock(return_value="shop"))
-
-        self.assertIn("did not succeed", findings.tags_error or "")
-        self.assertIsNone(findings.risk_score)
-        self.assertEqual(findings.comments.risk_score, 95)
-
     async def test_the_biggest_matching_profile_wins(self) -> None:
         fake = FakeApify(
-            [],
             [],
             search=[
                 candidate("shop_old", 300, "https://shop.example"),
@@ -547,7 +334,7 @@ class ResearchInstagramFallbackTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_a_homepage_without_a_link_also_tries_search(self) -> None:
         fake = FakeApify(
-            [], [], search=[candidate("shop", 8_000, "https://shop.example")]
+            [], search=[candidate("shop", 8_000, "https://shop.example")]
         )
         findings = await self.research(fake, AsyncMock(return_value=None))
 
@@ -562,11 +349,11 @@ class ResearchInstagramFallbackTests(unittest.IsolatedAsyncioTestCase):
                 return SimpleNamespace(call=call)
 
         findings = await self.research(
-            SearchFails([], []), AsyncMock(return_value=None)
+            SearchFails([]), AsyncMock(return_value=None)
         )
 
         self.assertIsNone(findings.error)
-        self.assertIn("no Instagram link", findings.skip_reason or "")
+        self.assertIn("no Instagram link", findings.comments.skip_reason or "")
 
     async def test_blocked_homepage_and_failed_search_is_a_real_failure(self) -> None:
         class SearchFails(FakeApify):
@@ -577,14 +364,14 @@ class ResearchInstagramFallbackTests(unittest.IsolatedAsyncioTestCase):
                 return SimpleNamespace(call=call)
 
         with self.assertRaises(RuntimeError):
-            await self.research(SearchFails([], []), blocked())
+            await self.research(SearchFails([]), blocked())
 
     async def test_without_a_brand_a_blocked_homepage_is_just_skipped(self) -> None:
-        fake = FakeApify([], [])
+        fake = FakeApify([])
         findings = await self.research(fake, blocked(), brand=None)
 
         self.assertEqual(
-            findings.skip_reason, "couldn't read the store's homepage"
+            findings.comments.skip_reason, "couldn't read the store's homepage"
         )
         self.assertEqual(fake.inputs, [])  # nothing was searched
 
@@ -607,7 +394,7 @@ class ResearchInstagramPageLinksTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_links_from_the_page_skip_the_homepage_and_search(self) -> None:
         homepage = AsyncMock(return_value="wrong")
-        fake = FakeApify(profile(5_000), [], twelve_comments_three_angry())
+        fake = FakeApify(profile(5_000), twelve_comments_three_angry())
         findings = await self.research(
             fake, homepage, ["https://www.instagram.com/shop/?hl=en"]
         )
@@ -619,7 +406,7 @@ class ResearchInstagramPageLinksTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_links_that_are_not_profiles_fall_back_to_the_homepage(self) -> None:
         homepage = AsyncMock(return_value="shop")
-        fake = FakeApify(profile(5_000), [])
+        fake = FakeApify(profile(5_000))
         findings = await self.research(
             fake,
             homepage,
@@ -631,7 +418,7 @@ class ResearchInstagramPageLinksTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_a_blocked_homepage_is_not_needed_when_the_page_gave_a_link(self) -> None:
         # This is the lightinthebox case: the server gets a 403, the browser doesn't.
-        fake = FakeApify(profile(5_000), [], twelve_comments_three_angry())
+        fake = FakeApify(profile(5_000), twelve_comments_three_angry())
         findings = await self.research(
             fake, blocked(), ["https://www.instagram.com/shop/"]
         )
@@ -650,48 +437,51 @@ class WebsiteLinkBackTests(unittest.IsolatedAsyncioTestCase):
             )
 
     async def test_a_profile_linking_to_the_store_is_verified(self) -> None:
-        fake = FakeApify(profile(5_000, externalUrl="http://shop.example/"), [])
+        fake = FakeApify(
+            profile(5_000, externalUrl="http://shop.example/"),
+            twelve_comments_three_angry(),
+        )
         findings = await self.research(fake)
 
         self.assertIs(findings.website_match, True)
-        self.assertEqual(findings.risk_score, 100)  # scored normally
+        self.assertEqual(findings.comments.risk_score, 95)  # scored normally
 
     async def test_a_profile_linking_elsewhere_is_not_scored(self) -> None:
         fake = FakeApify(
             profile(5_000, externalUrl="https://nike.com"),
-            [mention("alice", 1)],
             twelve_comments_three_angry(),
         )
         findings = await self.research(fake)
 
         self.assertIsNone(findings.error)
         self.assertEqual(findings.handle, "shop")
-        self.assertIn("nike.com", findings.skip_reason or "")
-        self.assertIn("not this store", findings.skip_reason or "")
-        self.assertIsNone(findings.risk_score)
+        self.assertIn("nike.com", findings.comments.skip_reason or "")
+        self.assertIn("not this store", findings.comments.skip_reason or "")
         self.assertIsNone(findings.comments.risk_score)
         self.assertEqual(findings.comments.analyzed, 0)
 
     async def test_no_website_or_link_in_bio_is_accepted_unverified(self) -> None:
         for extra in ({}, {"externalUrl": "https://linktr.ee/shop"}):
             with self.subTest(extra=extra):
-                findings = await self.research(FakeApify(profile(5_000, **extra), []))
+                findings = await self.research(
+                    FakeApify(profile(5_000, **extra), twelve_comments_three_angry())
+                )
 
                 self.assertIsNone(findings.website_match)
-                self.assertEqual(findings.risk_score, 100)
+                self.assertEqual(findings.comments.risk_score, 95)
 
     async def test_the_borrowed_account_check_covers_page_links_too(self) -> None:
         with patch.object(
             instagram, "find_instagram_handle", AsyncMock(return_value=None)
         ):
             findings = await instagram.research_instagram(
-                FakeApify(profile(9_000_000, externalUrl="https://nike.com"), []),  # type: ignore[arg-type]
+                FakeApify(profile(9_000_000, externalUrl="https://nike.com")),  # type: ignore[arg-type]
                 "https://shop.example/",
                 page_links=["https://www.instagram.com/nike/"],
             )
 
-        self.assertIsNone(findings.risk_score)
-        self.assertIn("nike.com", findings.skip_reason or "")
+        self.assertIsNone(findings.comments.risk_score)
+        self.assertIn("nike.com", findings.comments.skip_reason or "")
 
 
 class ResearchStoreInstagramTests(unittest.IsolatedAsyncioTestCase):
@@ -705,7 +495,7 @@ class ResearchStoreInstagramTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("no token", findings.error or "")
 
     async def test_successful_results_are_cached_by_domain(self) -> None:
-        research = AsyncMock(return_value=scored(3))
+        research = AsyncMock(return_value=InstagramFindings(handle="store"))
         with patch.object(agent, "get_apify_client"), patch.object(
             agent, "research_instagram", research
         ):
@@ -716,7 +506,7 @@ class ResearchStoreInstagramTests(unittest.IsolatedAsyncioTestCase):
         research.assert_awaited_once()
 
     async def test_page_links_are_passed_to_the_research(self) -> None:
-        research = AsyncMock(return_value=scored(3))
+        research = AsyncMock(return_value=InstagramFindings(handle="store"))
         links = ["https://www.instagram.com/store/"]
         with patch.object(agent, "get_apify_client"), patch.object(
             agent, "research_instagram", research
@@ -728,7 +518,9 @@ class ResearchStoreInstagramTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(research.await_args.kwargs["brand"], "Store")
 
     async def test_unscored_results_are_cached_too(self) -> None:
-        research = AsyncMock(return_value=InstagramFindings(skip_reason="no link"))
+        research = AsyncMock(
+            return_value=InstagramFindings(comments=CommentFindings(skip_reason="no link"))
+        )
         with patch.object(agent, "get_apify_client"), patch.object(
             agent, "research_instagram", research
         ):

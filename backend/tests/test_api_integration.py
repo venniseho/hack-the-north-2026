@@ -25,7 +25,9 @@ def critical_post() -> RedditPost:
 
 
 def unscored_instagram() -> InstagramFindings:
-    return InstagramFindings(skip_reason="no Instagram link found")
+    return InstagramFindings(
+        comments=CommentFindings(skip_reason="no Instagram link found")
+    )
 
 
 def scam_comments() -> CommentFindings:
@@ -34,15 +36,8 @@ def scam_comments() -> CommentFindings:
     return analyze_comments(calm + angry)  # 3 of 12 complaining: risk 95
 
 
-def untagged_instagram() -> InstagramFindings:
-    return InstagramFindings(
-        handle="store",
-        followers=5000,
-        recent_taggers=0,
-        expected_taggers=5,
-        risk_score=100,
-        comments=scam_comments(),
-    )
+def scam_instagram() -> InstagramFindings:
+    return InstagramFindings(handle="store", followers=5000, comments=scam_comments())
 
 
 class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
@@ -118,26 +113,19 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_real_instagram_score_is_aggregated(self) -> None:
         response = await self.post_analyze(
             RedditFindings(found_any=True, posts=[critical_post()], risk_score=40),
-            untagged_instagram(),
+            scam_instagram(),
         )
         scoring = response.json()["scoring"]
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(scoring["coverage"], 100)
-        # social proof = 100 * 0.4 + 95 * 0.6 = 97, then 40 * 0.4 + 58 * 0.3 + 97 * 0.3
-        self.assertAlmostEqual(scoring["overallRisk"], 62.5, places=3)
+        # social proof = 95, then 40 * 0.4 + 58 * 0.3 + 95 * 0.3
+        self.assertAlmostEqual(scoring["overallRisk"], 61.9, places=3)
 
         social_proof = scoring["categories"][2]
         self.assertEqual(social_proof["id"], "social-proof")
-        self.assertAlmostEqual(social_proof["riskScore"], 97, places=3)
-        tags, comments = social_proof["sources"]
-        self.assertEqual(tags["id"], "instagram-tags")
-        self.assertEqual(tags["status"], "available")
-        self.assertEqual(tags["findings"][0]["ruleId"], "INSTAGRAM_NO_TAGS")
-        self.assertEqual(
-            tags["findings"][0]["metadata"]["url"],
-            "https://www.instagram.com/store/",
-        )
+        self.assertAlmostEqual(social_proof["riskScore"], 95, places=3)
+        (comments,) = social_proof["sources"]
         self.assertEqual(comments["id"], "instagram-comments")
         self.assertEqual(comments["status"], "available")
         self.assertEqual(comments["riskScore"], 95)
@@ -154,11 +142,11 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
         scoring = response.json()["scoring"]
 
         self.assertEqual(response.status_code, 200)
-        for instagram in scoring["categories"][2]["sources"]:
-            self.assertEqual(instagram["status"], "error")
-            self.assertEqual(
-                instagram["metadata"]["error"], "research timed out after 80s"
-            )
+        (instagram,) = scoring["categories"][2]["sources"]
+        self.assertEqual(instagram["status"], "error")
+        self.assertEqual(
+            instagram["metadata"]["error"], "research timed out after 80s"
+        )
         self.assertEqual(scoring["categories"][0]["riskScore"], 40)
 
     async def test_no_posts_is_insufficient_data_not_safe(self) -> None:
