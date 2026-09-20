@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { extractReviewsFromActiveTab } from '@/lib/reviews';
 import { OverallRisk } from '@/src/components/Analysis/OverallRisk';
 import { RiskSummary } from '@/src/components/Analysis/RiskSummary';
 import { Header } from '@/src/components/Layout/Header';
@@ -38,9 +39,26 @@ export default function App() {
 
     try {
       const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+
+      // Reviews have to be read here, in the user's own tab. If injection is
+      // refused (restricted page, CSP) we send nothing and the backend reports
+      // GPTZero as insufficient-data rather than failing the whole analysis.
+      // Re-extract unless the caller supplied reviews. Checking for a non-empty
+      // array rather than `undefined` matters for Retry: `lastRequest` carries
+      // the previous run's `reviews`, so an empty one would be resent forever
+      // and retrying after a failed extraction could never succeed.
+      const extracted = request.reviews?.length
+        ? undefined
+        : await extractReviewsFromActiveTab(activeTab?.id);
+      if (extracted?.error) {
+        console.warn('Review extraction unavailable:', extracted.error);
+      }
+
       const nextRequest = {
         ...request,
         currentUrl: request.currentUrl ?? activeTab?.url,
+        reviews: request.reviews ?? extracted?.reviews,
+        via: request.via ?? extracted?.via,
       };
       setLastRequest(nextRequest);
 

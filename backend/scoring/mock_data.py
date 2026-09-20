@@ -1,4 +1,8 @@
-"""Deterministic scores for sources that have no real collector yet (Reddit does)."""
+"""Deterministic scores for sources that have no real collector yet.
+
+Reddit and GPTZero have real collectors and are passed into `create_analysis`
+directly - adding either here would shadow the real score with a constant.
+"""
 
 from .types import ScoringFinding, ScoreStatus, SourceScore
 
@@ -18,25 +22,6 @@ def mock_source_scores() -> tuple[SourceScore, ...]:
                         "Integration data assumes the store domain is relatively new."
                     ),
                     impact=50.0,
-                    metadata={"mock": True},
-                ),
-            ),
-            metadata={"mock": True},
-        ),
-        SourceScore(
-            id="gptzero",
-            label="GPTZero",
-            status=ScoreStatus.AVAILABLE,
-            risk_score=70.0,
-            findings=(
-                ScoringFinding(
-                    rule_id="MOCK_AI_REVIEW_PATTERN",
-                    title="Mock AI-written review signal",
-                    explanation=(
-                        "Integration data assumes on-site reviews contain strong "
-                        "AI-like writing patterns."
-                    ),
-                    impact=70.0,
                     metadata={"mock": True},
                 ),
             ),

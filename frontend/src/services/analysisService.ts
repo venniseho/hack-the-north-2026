@@ -2,6 +2,7 @@ import { requestAnalysis } from '@/lib/api';
 import type {
   AnalysisCategory,
   ConfidenceLevel,
+  Evidence,
   Finding,
   FindingSeverity,
   RiskStatus,
@@ -17,6 +18,9 @@ import type {
 export interface AnalysisRequest {
   currentUrl?: string;
   mode?: 'standard' | 'insufficient-data';
+  /** Review text extracted from the user's tab, forwarded to GPTZero scoring. */
+  reviews?: string[];
+  via?: string;
 }
 
 export interface AnalysisService {
@@ -49,8 +53,19 @@ function confidenceFromCoverage(coverage: number): ConfidenceLevel {
   return 'low';
 }
 
-function findingSeverity(sourceRisk: number | null): FindingSeverity {
-  const status = riskStatus(sourceRisk);
+/**
+ * Severity of one finding, from its own impact where the source reports one.
+ *
+ * Falling back to the source's score makes every card in a source look the
+ * same, which is actively misleading for GPTZero: its risk score is the *mean*
+ * probability across reviews, so a store with three fabricated reviews among
+ * twenty averages low and the cards quoting those three would read 'Info'. The
+ * per-finding impact is that review's own probability, which is what the badge
+ * should reflect. Sources with no per-finding impact (Reddit) keep the old
+ * behaviour.
+ */
+function findingSeverity(impact: number | null | undefined, sourceRisk: number | null): FindingSeverity {
+  const status = riskStatus(impact ?? sourceRisk);
   if (status === 'high') return 'danger';
   if (status === 'medium') return 'warning';
   return 'info';
@@ -63,18 +78,60 @@ function sourceStatusLabel(status: ApiScoreStatus, riskScore: number | null): st
   return 'Unavailable';
 }
 
+/**
+ * Turn a finding's metadata into the expandable evidence row.
+ *
+ * Everything a source knows about a finding already arrives in `metadata` -
+ * GPTZero sends the review's own AI probability, predicted class and whether
+ * the text was too short to be reliable; Reddit sends the thread URL. Without
+ * this the panel shows the claim and hides the grounds for it.
+ *
+ * `url` is lifted out because EvidenceItem renders it as an 'Open' link rather
+ * than a row in the detail table.
+ */
+function mapEvidence(
+  findingId: string,
+  source: ApiSourceScore,
+  finding: ApiSourceScore['findings'][number],
+): Evidence[] {
+  const { url, ...details } = finding.metadata ?? {};
+  const hasDetails = Object.keys(details).length > 0;
+  if (!hasDetails && typeof url !== 'string') return [];
+
+  return [
+    {
+      id: `${findingId}:evidence`,
+      label: finding.title,
+      source: source.label,
+      url: typeof url === 'string' ? url : undefined,
+      metadata: hasDetails ? details : undefined,
+    },
+  ];
+}
+
 function mapFindings(category: ApiCategoryScore, source: ApiSourceScore): Finding[] {
-  return source.findings.map((finding) => ({
-    id: `${category.id}:${source.id}:${finding.ruleId}`,
-    categoryId: category.id,
-    sourceId: source.id,
-    title: finding.title,
-    description: finding.explanation,
-    severity: findingSeverity(source.riskScore),
-    evidenceCount: 1,
-    impact: finding.impact ?? undefined,
-    metadata: finding.metadata ?? undefined,
-  }));
+  return source.findings.map((finding, index) => {
+    // The index is part of the id because a rule fires once per item, not once
+    // per source: every flagged review is GPTZERO_AI_REVIEW and two Reddit
+    // posts of the same severity share REDDIT_*. Without it these collide into
+    // one React key and the list mis-reconciles - expanding one card opens
+    // another.
+    const id = `${category.id}:${source.id}:${finding.ruleId}:${index}`;
+    const evidence = mapEvidence(id, source, finding);
+
+    return {
+      id,
+      categoryId: category.id,
+      sourceId: source.id,
+      title: finding.title,
+      description: finding.explanation,
+      severity: findingSeverity(finding.impact, source.riskScore),
+      evidenceCount: evidence.length,
+      evidence,
+      impact: finding.impact ?? undefined,
+      metadata: finding.metadata ?? undefined,
+    };
+  });
 }
 
 function mapCategory(
@@ -150,7 +207,11 @@ export function mapAnalysisResponse(response: AnalysisApiResponse): ScamAnalysis
 
 export const analysisService: AnalysisService = {
   async getAnalysis(request) {
-    const response = await requestAnalysis({ currentUrl: request?.currentUrl });
+    const response = await requestAnalysis({
+      currentUrl: request?.currentUrl,
+      reviews: request?.reviews,
+      via: request?.via,
+    });
     return mapAnalysisResponse(response);
   },
 };
