@@ -57,6 +57,29 @@ function findingSeverity(sourceRisk: number | null): FindingSeverity {
   return 'info';
 }
 
+const redditSeverityPresentation = {
+  critical: { severity: 'danger', badgeLabel: 'Critical' },
+  major: { severity: 'danger', badgeLabel: 'Major' },
+  moderate: { severity: 'warning', badgeLabel: 'Moderate' },
+  minor: { severity: 'info', badgeLabel: 'Minor' },
+  positive: { severity: 'positive', badgeLabel: 'Positive' },
+} as const satisfies Record<string, { severity: FindingSeverity; badgeLabel: string }>;
+
+/** Preserve the per-post severity assigned by the Reddit researcher. */
+function redditPresentation(
+  source: ApiSourceScore,
+  finding: ApiSourceScore['findings'][number],
+): { severity: FindingSeverity; badgeLabel?: string } | undefined {
+  if (source.id !== 'reddit') return undefined;
+
+  const severity = finding.metadata?.severity;
+  if (typeof severity !== 'string' || !(severity in redditSeverityPresentation)) {
+    return undefined;
+  }
+
+  return redditSeverityPresentation[severity as keyof typeof redditSeverityPresentation];
+}
+
 function sourceStatusLabel(status: ApiScoreStatus, riskScore: number | null): string {
   if (status === 'available') return riskLabel(riskStatus(riskScore));
   if (status === 'insufficient-data') return 'Insufficient data';
@@ -95,18 +118,23 @@ function mapEvidence(
 }
 
 function mapFindings(category: ApiCategoryScore, source: ApiSourceScore): Finding[] {
-  return source.findings.map((finding) => ({
-    id: `${category.id}:${source.id}:${finding.ruleId}`,
-    categoryId: category.id,
-    sourceId: source.id,
-    title: finding.title,
-    description: finding.explanation,
-    severity: findingSeverity(source.riskScore),
-    evidenceCount: 1,
-    evidence: [mapEvidence(category, source, finding)],
-    impact: finding.impact ?? undefined,
-    metadata: finding.metadata ?? undefined,
-  }));
+  return source.findings.map((finding) => {
+    const presentation = redditPresentation(source, finding);
+
+    return {
+      id: `${category.id}:${source.id}:${finding.ruleId}`,
+      categoryId: category.id,
+      sourceId: source.id,
+      title: finding.title,
+      description: finding.explanation,
+      severity: presentation?.severity ?? findingSeverity(source.riskScore),
+      badgeLabel: presentation?.badgeLabel,
+      evidenceCount: 1,
+      evidence: [mapEvidence(category, source, finding)],
+      impact: finding.impact ?? undefined,
+      metadata: finding.metadata ?? undefined,
+    };
+  });
 }
 
 function mapCategory(
