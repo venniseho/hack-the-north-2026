@@ -4,6 +4,10 @@ const BASE_URL = import.meta.env.WXT_API_BASE_URL ?? 'http://localhost:8000';
 
 export interface AnalyzeRequest {
   currentUrl?: string;
+  /** Verbatim review text extracted from the page; see lib/reviews.ts. */
+  reviews?: string[];
+  /** Which extraction path produced them ('widget:judgeme', 'json-ld', ...). */
+  via?: string;
 }
 
 export async function requestAnalysis(

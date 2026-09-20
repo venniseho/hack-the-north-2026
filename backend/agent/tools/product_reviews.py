@@ -37,7 +37,7 @@ from dataclasses import dataclass, field, replace
 
 from ...services.gptzero import CorpusVerdict, GPTZeroClient, summarize
 
-# Mirrors `keep()` in research/ai-review-detection/extract_reviews.js. Kept in
+# Mirrors `keep()` in frontend/public/extract-reviews.js. Kept in
 # sync deliberately: the content script filters before it sends, and this is the
 # backstop for anything that arrives by another path (JSON-LD, a hand-made
 # fixture, a future API caller).
@@ -48,7 +48,7 @@ MAX_CHARS = 5000
 DEFAULT_CAP = 25
 
 # Extraction sources whose output is real but unrepresentative, keyed to the
-# `via` string that extract_reviews.js reports.
+# `via` string that extract-reviews.js reports.
 #
 #   heuristic  - an unrecognised widget; the gates make this rarely wrong, but
 #                it is still a guess about what counts as a review.
@@ -62,7 +62,7 @@ _CONFIDENCE_ORDER = ("insufficient", "low", "medium", "high")
 
 # --- normalisation --------------------------------------------------------
 #
-# Widget chrome that shares a text node with the review. extract_reviews.js
+# Widget chrome that shares a text node with the review. extract-reviews.js
 # strips these in the browser; repeating the cheap ones here means a corpus that
 # arrived some other way is not scored with "Verified Purchase" glued to it.
 
@@ -181,7 +181,7 @@ async def score_reviews(
 ) -> tuple[CorpusVerdict, PreparedReviews]:
     """Prepare a raw corpus, score it, and return the verdict plus the audit.
 
-    `via` is the extraction source reported by extract_reviews.js; pass it
+    `via` is the extraction source reported by extract-reviews.js; pass it
     through so a heuristic or JSON-LD corpus gets its confidence capped.
     """
     prepared = prepare(raw, cap=cap)
