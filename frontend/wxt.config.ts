@@ -12,8 +12,11 @@ export default defineConfig({
   manifest: {
     name: 'Hack the North 2026',
     description: 'Browser assistant powered by the Backboard backend.',
-    permissions: ['sidePanel', 'tabs'],
-    host_permissions: ['http://localhost:8000/*'],
+    // `scripting` + all-URL host access lets the panel read the Instagram
+    // links off the page being checked (only when the user clicks scan).
+    // It also covers the localhost backend.
+    permissions: ['sidePanel', 'tabs', 'scripting'],
+    host_permissions: ['<all_urls>'],
     // An action is required for the toolbar icon that opens the side panel.
     action: {},
   },

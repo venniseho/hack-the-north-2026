@@ -10,7 +10,7 @@ SCORING_CONFIG = ScoringConfig(
         CategoryScoringConfig(
             id="third-party-reviews",
             label="Third-Party Reviews",
-            weight=0.5,
+            weight=0.4,
             sources=(
                 SourceScoringConfig(
                     id="reddit",
@@ -22,7 +22,7 @@ SCORING_CONFIG = ScoringConfig(
         CategoryScoringConfig(
             id="site-analysis",
             label="Site Analysis",
-            weight=0.5,
+            weight=0.3,
             sources=(
                 SourceScoringConfig(
                     id="domain-age",
@@ -33,6 +33,24 @@ SCORING_CONFIG = ScoringConfig(
                     id="gptzero",
                     label="GPTZero",
                     weight=0.4,
+                ),
+            ),
+        ),
+        CategoryScoringConfig(
+            id="social-proof",
+            label="Social Proof",
+            weight=0.3,
+            sources=(
+                SourceScoringConfig(
+                    id="instagram-tags",
+                    label="Instagram Tags",
+                    weight=0.4,
+                ),
+                # Direct customer reports outweigh the absence of tags.
+                SourceScoringConfig(
+                    id="instagram-comments",
+                    label="Instagram Comments",
+                    weight=0.6,
                 ),
             ),
         ),

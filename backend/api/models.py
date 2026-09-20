@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 
@@ -11,6 +11,12 @@ class ApiModel(BaseModel):
 
 class AnalyzeRequest(ApiModel):
     current_url: StrictStr = Field(alias="currentUrl")
+    # Instagram links the extension read off the live page. Optional, because
+    # the extension can't always read the page; the backend then finds the
+    # account itself. Bounded, since anyone can call this endpoint.
+    instagram_links: list[Annotated[StrictStr, Field(max_length=500)]] = Field(
+        default_factory=list, alias="instagramLinks", max_length=50
+    )
 
 
 class ScoringFindingResponse(ApiModel):

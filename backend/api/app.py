@@ -1,7 +1,10 @@
+import asyncio
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from ..agent.agent import research_store
+from ..agent.agent import research_store, research_store_instagram
+from ..scoring.sources.instagram import score_instagram, score_instagram_comments
 from ..scoring.sources.reddit import score_reddit
 from .analysis import create_analysis
 from .models import AnalysisResponse, AnalyzeRequest
@@ -26,5 +29,13 @@ app.add_middleware(
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalyzeRequest) -> AnalysisResponse:
-    findings = await research_store(request.current_url)
-    return create_analysis(request.current_url, score_reddit(findings))
+    # Both never raise, so one slow or broken source can't fail the request.
+    reddit, instagram = await asyncio.gather(
+        research_store(request.current_url),
+        research_store_instagram(request.current_url, request.instagram_links),
+    )
+    return create_analysis(
+        request.current_url,
+        score_reddit(reddit),
+        (score_instagram(instagram), score_instagram_comments(instagram)),
+    )

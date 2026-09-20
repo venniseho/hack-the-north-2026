@@ -16,6 +16,7 @@ import type {
 
 export interface AnalysisRequest {
   currentUrl?: string;
+  instagramLinks?: string[];
   mode?: 'standard' | 'insufficient-data';
 }
 
@@ -150,7 +151,10 @@ export function mapAnalysisResponse(response: AnalysisApiResponse): ScamAnalysis
 
 export const analysisService: AnalysisService = {
   async getAnalysis(request) {
-    const response = await requestAnalysis({ currentUrl: request?.currentUrl });
+    const response = await requestAnalysis({
+      currentUrl: request?.currentUrl,
+      instagramLinks: request?.instagramLinks,
+    });
     return mapAnalysisResponse(response);
   },
 };

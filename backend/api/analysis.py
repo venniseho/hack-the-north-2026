@@ -81,10 +81,14 @@ def _scoring_response(result: ScoringResult) -> ScoringResponse:
     )
 
 
-def create_analysis(current_url: str, reddit: SourceScore) -> AnalysisResponse:
-    """Build the API response from the real Reddit score plus mock scores for
-    the sources that don't have collectors yet."""
-    result = aggregate_overall(SCORING_CONFIG, (reddit, *mock_source_scores()))
+def create_analysis(
+    current_url: str, reddit: SourceScore, instagram: tuple[SourceScore, ...]
+) -> AnalysisResponse:
+    """Build the API response from the real Reddit and Instagram scores plus
+    mock scores for the sources that don't have collectors yet."""
+    result = aggregate_overall(
+        SCORING_CONFIG, (reddit, *instagram, *mock_source_scores())
+    )
     return AnalysisResponse(
         store=StoreResponse(domain=_domain_from_url(current_url)),
         scoring=_scoring_response(result),

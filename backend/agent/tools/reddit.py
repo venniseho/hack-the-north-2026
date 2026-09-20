@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Literal, Optional, cast, get_args
@@ -9,6 +10,8 @@ from typing import Literal, Optional, cast, get_args
 import httpx
 from backboard import BackboardClient
 from backboard.models import ChatMessagesResponse
+
+logger = logging.getLogger(__name__)
 
 Severity = Literal["critical", "major", "moderate", "minor", "positive"]
 
@@ -90,6 +93,20 @@ def score_reddit(posts: list[RedditPost]) -> int:
     return round(100 - trust)
 
 
+def _log_turn(label: str, response: ChatMessagesResponse) -> None:
+    last = response.messages[-1] if response.messages else {}
+    logger.info(
+        "Reddit %s reply: thread=%s status=%s model=%s/%s tokens=%s\n%s",
+        label,
+        response.thread_id,
+        response.status,
+        last.get("model_provider"),
+        last.get("model_name"),
+        last.get("total_tokens"),
+        response.content,
+    )
+
+
 async def _verify_url(client: httpx.AsyncClient, url: str) -> bool:
     """Best-effort check that a URL isn't fabricated.
     """
@@ -117,19 +134,37 @@ async def research_reddit(
          structured JSON (web_search and json_output can't both be active
          on one turn, per Backboard's docs).
     """
+    research_prompt = (
+        f'Research Reddit for scam reports or trustworthy discussion about '
+        f'"{brand}" ({domain}). Look for posts warning about non-delivery, '
+        f"counterfeit products, fraud, products far worse than advertised, or "
+        f"refund problems, and also genuine positive experiences if they exist."
+    )
+    # Backboard runs web search server-side and never returns the queries it
+    # issued (tool_calls is null, no search field in the response or stream), so
+    # the prompts are the only visible input that shapes them.
+    logger.info(
+        "Reddit research request for %r (%s) provider=%s model=%s\n"
+        "--- system prompt ---\n%s\n--- user prompt ---\n%s",
+        brand,
+        domain,
+        llm_provider or "default",
+        model_name or "default",
+        _RESEARCH_SYSTEM_PROMPT,
+        research_prompt,
+    )
+
     research = cast(
         ChatMessagesResponse,
         await client.send_message(
-            f'Research Reddit for scam reports or trustworthy discussion about '
-            f'"{brand}" ({domain}). Look for posts warning about non-delivery, '
-            f"counterfeit products, fraud, products far worse than advertised, or "
-            f"refund problems, and also genuine positive experiences if they exist.",
+            research_prompt,
             system_prompt=_RESEARCH_SYSTEM_PROMPT,
             web_search="Auto",
             llm_provider=llm_provider,
             model_name=model_name,
         ),
     )
+    _log_turn("research", research)
 
     if not research.content:
         return RedditFindings(found_any=False, error="empty research response")
@@ -144,6 +179,7 @@ async def research_reddit(
             model_name=model_name,
         ),
     )
+    _log_turn("extraction", extraction)
 
     if not extraction.content:
         return RedditFindings(
@@ -163,13 +199,24 @@ async def research_reddit(
             error=f"failed to parse extraction JSON: {exc}",
         )
 
+    raw_posts = parsed.get("posts", [])
     posts: list[RedditPost] = []
-    for raw_post in parsed.get("posts", []):
+    for raw_post in raw_posts:
         url = (raw_post.get("url") or "").strip()
         if not url or not _PERMALINK_RE.match(url):
+            logger.info(
+                "Dropped Reddit result (not a comment permalink): %r url=%r",
+                raw_post.get("title"),
+                url,
+            )
             continue  # not a real-looking Reddit permalink — likely hallucinated
         severity = raw_post.get("severity")
         if severity not in _SEVERITIES:
+            logger.warning(
+                "Reddit result %r has invalid severity %r; defaulting to minor",
+                raw_post.get("title"),
+                severity,
+            )
             severity = "minor"  # unlabeled/invalid: keep the post, weight it lightly
         posts.append(
             RedditPost(
@@ -190,8 +237,16 @@ async def research_reddit(
             )
         for post, ok in zip(posts, results):
             post.verified = ok
+            if not ok:
+                logger.info("Dropped Reddit result (URL returned 404): %s", post.url)
         posts = [p for p in posts if p.verified]
 
+    logger.info(
+        "Reddit research for %s: %d result(s) extracted, %d kept after filtering",
+        domain,
+        len(raw_posts),
+        len(posts),
+    )
     return RedditFindings(
         found_any=bool(parsed.get("found_any", bool(posts))),
         posts=posts,

@@ -5,6 +5,7 @@ import { Header } from '@/src/components/Layout/Header';
 import { Panel } from '@/src/components/Layout/Panel';
 import { ErrorState } from '@/src/components/Shared/ErrorState';
 import { LoadingState } from '@/src/components/Shared/LoadingState';
+import { collectInstagramLinks } from '@/lib/pageLinks';
 import { loadingSteps } from '@/src/data/mockAnalysis';
 import { analysisService, type AnalysisRequest } from '@/src/services/analysisService';
 import type { ScamAnalysis } from '@/src/types/analysis';
@@ -38,9 +39,15 @@ export default function App() {
 
     try {
       const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+      // Only read the page when scanning the active tab. A retry reuses the links
+      // already in the request, and an explicit URL isn't what the tab shows.
+      const instagramLinks =
+        request.instagramLinks ??
+        (request.currentUrl === undefined ? await collectInstagramLinks(activeTab?.id) : []);
       const nextRequest = {
         ...request,
         currentUrl: request.currentUrl ?? activeTab?.url,
+        instagramLinks,
       };
       setLastRequest(nextRequest);
 

@@ -4,6 +4,8 @@ const BASE_URL = import.meta.env.WXT_API_BASE_URL ?? 'http://localhost:8000';
 
 export interface AnalyzeRequest {
   currentUrl?: string;
+  /** Instagram links read off the page, so the backend needn't fetch it itself. */
+  instagramLinks?: string[];
 }
 
 export async function requestAnalysis(
