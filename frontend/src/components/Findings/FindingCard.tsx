@@ -12,12 +12,15 @@ const severityClasses: Record<FindingSeverity, string> = {
     'border-amber-300 bg-amber-100 text-amber-900 dark:border-[#8F5B36] dark:bg-[#35271E] dark:text-[#F0BE8B]',
   danger:
     'border-rose-300 bg-rose-100 text-rose-900 dark:border-[#985057] dark:bg-[#352226] dark:text-[#F0A9AC]',
+  positive:
+    'border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-100',
 };
 
 const severityLabels: Record<FindingSeverity, string> = {
   info: 'Info',
   warning: 'Warning',
   danger: 'High concern',
+  positive: 'Positive',
 };
 
 export function FindingCard({ finding }: FindingCardProps) {
@@ -25,6 +28,7 @@ export function FindingCard({ finding }: FindingCardProps) {
   const evidenceRegionId = useId();
   const evidence = finding.evidence ?? [];
   const hasEvidence = evidence.length > 0;
+  const sourceEvidence = evidence.filter((item) => item.url);
 
   return (
     <article className="rounded-md border border-slate-200 bg-white p-3 shadow-sm dark:border-teal-700/60 dark:bg-[#082a31]">
@@ -32,7 +36,7 @@ export function FindingCard({ finding }: FindingCardProps) {
         <span
           className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${severityClasses[finding.severity]}`}
         >
-          {severityLabels[finding.severity]}
+          {finding.badgeLabel ?? severityLabels[finding.severity]}
         </span>
         <div className="min-w-0 flex-1">
           <h4 className="text-sm font-bold leading-5 text-slate-950 dark:text-white">
@@ -60,6 +64,18 @@ export function FindingCard({ finding }: FindingCardProps) {
                 {isExpanded ? 'Hide evidence' : 'View evidence'}
               </button>
             )}
+
+            {sourceEvidence.map((item, index) => (
+              <a
+                key={item.id}
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-sm text-[11px] text-[#007889] underline underline-offset-2 focus:outline-none focus:ring-2 focus:ring-[#007889] dark:text-teal-200"
+              >
+                {sourceEvidence.length === 1 ? 'View source' : `Source ${index + 1}`}
+              </a>
+            ))}
           </div>
         </div>
       </div>

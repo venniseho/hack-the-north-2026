@@ -71,6 +71,29 @@ function findingSeverity(impact: number | null | undefined, sourceRisk: number |
   return 'info';
 }
 
+const redditSeverityPresentation = {
+  critical: { severity: 'danger', badgeLabel: 'Critical' },
+  major: { severity: 'danger', badgeLabel: 'Major' },
+  moderate: { severity: 'warning', badgeLabel: 'Moderate' },
+  minor: { severity: 'info', badgeLabel: 'Minor' },
+  positive: { severity: 'positive', badgeLabel: 'Positive' },
+} as const satisfies Record<string, { severity: FindingSeverity; badgeLabel: string }>;
+
+/** Preserve the per-post severity assigned by the Reddit researcher. */
+function redditPresentation(
+  source: ApiSourceScore,
+  finding: ApiSourceScore['findings'][number],
+): { severity: FindingSeverity; badgeLabel?: string } | undefined {
+  if (source.id !== 'reddit') return undefined;
+
+  const severity = finding.metadata?.severity;
+  if (typeof severity !== 'string' || !(severity in redditSeverityPresentation)) {
+    return undefined;
+  }
+
+  return redditSeverityPresentation[severity as keyof typeof redditSeverityPresentation];
+}
+
 function sourceStatusLabel(status: ApiScoreStatus, riskScore: number | null): string {
   if (status === 'available') return riskLabel(riskStatus(riskScore));
   if (status === 'insufficient-data') return 'Insufficient data';
@@ -78,46 +101,48 @@ function sourceStatusLabel(status: ApiScoreStatus, riskScore: number | null): st
   return 'Unavailable';
 }
 
-/**
- * Turn a finding's metadata into the expandable evidence row.
- *
- * Everything a source knows about a finding already arrives in `metadata` -
- * GPTZero sends the review's own AI probability, predicted class and whether
- * the text was too short to be reliable; Reddit sends the thread URL. Without
- * this the panel shows the claim and hides the grounds for it.
- *
- * `url` is lifted out because EvidenceItem renders it as an 'Open' link rather
- * than a row in the detail table.
- */
+function sourceUrl(metadata: Record<string, unknown> | null): string | undefined {
+  const value = metadata?.url;
+  if (typeof value !== 'string') return undefined;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function mapEvidence(
   findingId: string,
   source: ApiSourceScore,
   finding: ApiSourceScore['findings'][number],
 ): Evidence[] {
-  const { url, ...details } = finding.metadata ?? {};
-  const hasDetails = Object.keys(details).length > 0;
-  if (!hasDetails && typeof url !== 'string') return [];
+  const metadata = { ...(finding.metadata ?? {}) };
+  delete metadata.url;
+  const url = sourceUrl(finding.metadata);
+  const hasDetails = Object.keys(metadata).length > 0;
+
+  if (!hasDetails && !url) return [];
 
   return [
     {
       id: `${findingId}:evidence`,
       label: finding.title,
       source: source.label,
-      url: typeof url === 'string' ? url : undefined,
-      metadata: hasDetails ? details : undefined,
+      url,
+      excerpt: finding.explanation,
+      metadata: hasDetails ? metadata : undefined,
     },
   ];
 }
 
 function mapFindings(category: ApiCategoryScore, source: ApiSourceScore): Finding[] {
   return source.findings.map((finding, index) => {
-    // The index is part of the id because a rule fires once per item, not once
-    // per source: every flagged review is GPTZERO_AI_REVIEW and two Reddit
-    // posts of the same severity share REDDIT_*. Without it these collide into
-    // one React key and the list mis-reconciles - expanding one card opens
-    // another.
+    // Rules can fire once per item, so repeated rule IDs still need unique keys.
     const id = `${category.id}:${source.id}:${finding.ruleId}:${index}`;
     const evidence = mapEvidence(id, source, finding);
+    const presentation = redditPresentation(source, finding);
 
     return {
       id,
@@ -125,7 +150,9 @@ function mapFindings(category: ApiCategoryScore, source: ApiSourceScore): Findin
       sourceId: source.id,
       title: finding.title,
       description: finding.explanation,
-      severity: findingSeverity(finding.impact, source.riskScore),
+      severity:
+        presentation?.severity ?? findingSeverity(finding.impact, source.riskScore),
+      badgeLabel: presentation?.badgeLabel,
       evidenceCount: evidence.length,
       evidence,
       impact: finding.impact ?? undefined,

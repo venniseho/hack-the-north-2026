@@ -1,16 +1,17 @@
-@import '@fontsource-variable/dm-sans';
+@import '@fontsource-variable/raleway';
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans:
-    'DM Sans Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Raleway Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
 }
 
 * {
   box-sizing: border-box;
+  font-weight: 400 !important;
 }
 
 html,
@@ -22,6 +23,13 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 button,
