@@ -118,12 +118,13 @@ async def analyze_reviews(reviews: list[str], via: str | None) -> SourceScore:
 def create_analysis(
     current_url: str,
     reddit: SourceScore,
+    instagram: SourceScore,
     gptzero: SourceScore,
 ) -> AnalysisResponse:
     """Build the API response from the collected source scores."""
     result = aggregate_overall(
         SCORING_CONFIG,
-        (reddit, gptzero),
+        (reddit, instagram, gptzero),
     )
     return AnalysisResponse(
         store=StoreResponse(domain=_domain_from_url(current_url)),

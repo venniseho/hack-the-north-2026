@@ -29,16 +29,15 @@ app.add_middleware(
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalyzeRequest) -> AnalysisResponse:
-    # Both never raise, so one slow or broken source can't fail the request.
-    reddit, instagram, gptzero = await asyncio.gather(
-        asyncio.gather(
+    # None of these raise, so one slow or broken source can't fail the request.
+    reddit, gptzero, instagram = await asyncio.gather(
         research_store(request.current_url),
         analyze_reviews(request.reviews, request.via),
-    ),
         research_store_instagram(request.current_url, request.instagram_links),
     )
     return create_analysis(
         request.current_url,
         score_reddit(reddit),
         score_instagram_comments(instagram),
-    , gptzero)
+        gptzero,
+    )

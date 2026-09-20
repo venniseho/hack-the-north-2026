@@ -68,19 +68,18 @@ def scored_corpus() -> tuple:
 
 class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def post_analyze(
-        
         self,
-       
         findings: RedditFindings,
         instagram: InstagramFindings | None = None,
         instagram_links: list[str] | None = None,
-    ,
         *,
         reviews: list[str] | None = None,
         via: str | None = None,
     ) -> httpx.Response:
         transport = httpx.ASGITransport(app=app)
         body: dict = {"currentUrl": "https://store.example/item"}
+        if instagram_links is not None:
+            body["instagramLinks"] = instagram_links
         if reviews is not None:
             body["reviews"] = reviews
         if via is not None:
@@ -98,14 +97,7 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
             ) as client:
                 response = await client.post(
                     "/analyze",
-                    json={
-                        "currentUrl": "https://store.example/item",
-                        **(
-                            {"instagramLinks": instagram_links}
-                            if instagram_links is not None
-                            else {}
-                        ),
-                    },
+                    json=body,
                     headers={"Origin": "chrome-extension://integration-test"},
                 )
         research.assert_awaited_once_with("https://store.example/item")
@@ -132,9 +124,10 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["access-control-allow-origin"], "*")
         self.assertEqual(payload["store"]["domain"], "store.example")
-        self.assertEqual(scoring["coverage"], 70)  # social proof is unscored
-        # (40 * 0.4 + 58 * 0.3) / 0.7
-        self.assertAlmostEqual(scoring["overallRisk"], 47.714, places=3)
+        # No reviews and no Instagram result, so gptzero and instagram-comments
+        # never report and those two categories are uncovered.
+        self.assertEqual(scoring["coverage"], 40)
+        self.assertEqual(scoring["overallRisk"], 40)  # Reddit alone
 
         third_party, site_analysis, social_proof = scoring["categories"]
         self.assertEqual(third_party["riskScore"], 40)
@@ -146,6 +139,7 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
             reddit["findings"][0]["metadata"]["url"], critical_post().url
         )
         self.assertIsNone(site_analysis["riskScore"])
+        self.assertIsNone(social_proof["riskScore"])
 
     async def test_no_reviews_is_insufficient_data_not_low_risk(self) -> None:
         response = await self.post_analyze(
@@ -167,6 +161,7 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
             ) as scorer:
                 response = await self.post_analyze(
                     RedditFindings(found_any=True, posts=[critical_post()], risk_score=40),
+                    scam_instagram(),
                     reviews=[ai_review(i) for i in range(4)],
                     via="widget:judgeme",
                 )
@@ -195,7 +190,6 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
         gptzero = response.json()["scoring"]["categories"][1]["sources"][0]
         self.assertEqual(gptzero["status"], "unavailable")
         self.assertIsNone(gptzero["riskScore"])
-        self.assertIsNone(social_proof["riskScore"])
 
     async def test_real_instagram_score_is_aggregated(self) -> None:
         response = await self.post_analyze(
@@ -205,9 +199,9 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
         scoring = response.json()["scoring"]
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(scoring["coverage"], 100)
-        # social proof = 95, then 40 * 0.4 + 58 * 0.3 + 95 * 0.3
-        self.assertAlmostEqual(scoring["overallRisk"], 61.9, places=3)
+        self.assertEqual(scoring["coverage"], 70)  # no reviews, so no gptzero
+        # (40 * 0.4 + 95 * 0.3) / 0.7
+        self.assertAlmostEqual(scoring["overallRisk"], 63.571, places=3)
 
         social_proof = scoring["categories"][2]
         self.assertEqual(social_proof["id"], "social-proof")
@@ -244,8 +238,10 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(reddit["status"], "insufficient-data")
         self.assertIsNone(reddit["riskScore"])
         self.assertIsNone(scoring["categories"][0]["riskScore"])
-        self.assertEqual(scoring["overallRisk"], 58)  # site analysis only
-        self.assertEqual(scoring["coverage"], 30)
+        # No source reported, so there is no score at all - which is the
+        # point: an unexamined store is unknown, not safe.
+        self.assertIsNone(scoring["overallRisk"])
+        self.assertEqual(scoring["coverage"], 0)
 
     async def test_research_failure_degrades_only_the_reddit_source(self) -> None:
         response = await self.post_analyze(
