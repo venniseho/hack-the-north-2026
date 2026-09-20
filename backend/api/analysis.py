@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 
 from ..agent.tools.product_reviews import score_reviews
 from ..scoring import SCORING_CONFIG, aggregate_overall
-from ..scoring.mock_data import mock_source_scores
 from ..scoring.sources.gptzero import no_score, score_onsite_reviews
 from ..scoring.types import (
     CategoryScore,
@@ -121,11 +120,10 @@ def create_analysis(
     reddit: SourceScore,
     gptzero: SourceScore,
 ) -> AnalysisResponse:
-    """Build the API response from the real Reddit and GPTZero scores, plus
-    mock scores for the sources that don't have collectors yet."""
+    """Build the API response from the collected source scores."""
     result = aggregate_overall(
         SCORING_CONFIG,
-        (reddit, gptzero, *mock_source_scores()),
+        (reddit, gptzero),
     )
     return AnalysisResponse(
         store=StoreResponse(domain=_domain_from_url(current_url)),
