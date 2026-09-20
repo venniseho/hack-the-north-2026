@@ -12,8 +12,21 @@ export default defineConfig({
   manifest: {
     name: 'Hack the North 2026',
     description: 'Browser assistant powered by the Backboard backend.',
-    permissions: ['sidePanel', 'tabs'],
-    host_permissions: ['http://localhost:8000/*'],
+    permissions: ['sidePanel', 'tabs', 'scripting', 'activeTab'],
+
+    // `<all_urls>` is required, not preferred. `activeTab` does not cover this
+    // flow: opening the side panel through `openPanelOnActionClick` consumes
+    // the action click without granting activeTab on the tab, so
+    // `executeScript` is refused with "Extension manifest must request
+    // permission to access this host". Measured against the built extension in
+    // Chrome - activeTab alone fails on an ordinary http page, the same page
+    // extracts 3 reviews with this line present.
+    //
+    // This grants the *ability* to inject, not a standing content script. The
+    // extractor still runs only on the tab being analysed, only when the user
+    // presses the button. Tightening this to optional_host_permissions, asked
+    // for on first use, is the follow-up.
+    host_permissions: ['http://localhost:8000/*', '<all_urls>'],
     // An action is required for the toolbar icon that opens the side panel.
     action: {},
   },

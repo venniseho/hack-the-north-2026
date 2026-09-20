@@ -1,9 +1,11 @@
+import asyncio
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..agent.agent import research_store
 from ..scoring.sources.reddit import score_reddit
-from .analysis import create_analysis
+from .analysis import analyze_reviews, create_analysis
 from .models import AnalysisResponse, AnalyzeRequest
 
 
@@ -26,5 +28,8 @@ app.add_middleware(
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalyzeRequest) -> AnalysisResponse:
-    findings = await research_store(request.current_url)
-    return create_analysis(request.current_url, score_reddit(findings))
+    findings, gptzero = await asyncio.gather(
+        research_store(request.current_url),
+        analyze_reviews(request.reviews, request.via),
+    )
+    return create_analysis(request.current_url, score_reddit(findings), gptzero)

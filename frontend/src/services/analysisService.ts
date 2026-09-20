@@ -18,6 +18,9 @@ import type {
 export interface AnalysisRequest {
   currentUrl?: string;
   mode?: 'standard' | 'insufficient-data';
+  /** Review text extracted from the user's tab, forwarded to GPTZero scoring. */
+  reviews?: string[];
+  via?: string;
 }
 
 export interface AnalysisService {
@@ -50,8 +53,19 @@ function confidenceFromCoverage(coverage: number): ConfidenceLevel {
   return 'low';
 }
 
-function findingSeverity(sourceRisk: number | null): FindingSeverity {
-  const status = riskStatus(sourceRisk);
+/**
+ * Severity of one finding, from its own impact where the source reports one.
+ *
+ * Falling back to the source's score makes every card in a source look the
+ * same, which is actively misleading for GPTZero: its risk score is the *mean*
+ * probability across reviews, so a store with three fabricated reviews among
+ * twenty averages low and the cards quoting those three would read 'Info'. The
+ * per-finding impact is that review's own probability, which is what the badge
+ * should reflect. Sources with no per-finding impact (Reddit) keep the old
+ * behaviour.
+ */
+function findingSeverity(impact: number | null | undefined, sourceRisk: number | null): FindingSeverity {
+  const status = riskStatus(impact ?? sourceRisk);
   if (status === 'high') return 'danger';
   if (status === 'medium') return 'warning';
   return 'info';
@@ -100,37 +114,47 @@ function sourceUrl(metadata: Record<string, unknown> | null): string | undefined
 }
 
 function mapEvidence(
-  category: ApiCategoryScore,
+  findingId: string,
   source: ApiSourceScore,
   finding: ApiSourceScore['findings'][number],
-): Evidence {
+): Evidence[] {
   const metadata = { ...(finding.metadata ?? {}) };
   delete metadata.url;
+  const url = sourceUrl(finding.metadata);
+  const hasDetails = Object.keys(metadata).length > 0;
 
-  return {
-    id: `${category.id}:${source.id}:${finding.ruleId}:evidence`,
-    label: finding.title,
-    source: source.label,
-    url: sourceUrl(finding.metadata),
-    excerpt: finding.explanation,
-    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-  };
+  if (!hasDetails && !url) return [];
+
+  return [
+    {
+      id: `${findingId}:evidence`,
+      label: finding.title,
+      source: source.label,
+      url,
+      excerpt: finding.explanation,
+      metadata: hasDetails ? metadata : undefined,
+    },
+  ];
 }
 
 function mapFindings(category: ApiCategoryScore, source: ApiSourceScore): Finding[] {
-  return source.findings.map((finding) => {
+  return source.findings.map((finding, index) => {
+    // Rules can fire once per item, so repeated rule IDs still need unique keys.
+    const id = `${category.id}:${source.id}:${finding.ruleId}:${index}`;
+    const evidence = mapEvidence(id, source, finding);
     const presentation = redditPresentation(source, finding);
 
     return {
-      id: `${category.id}:${source.id}:${finding.ruleId}`,
+      id,
       categoryId: category.id,
       sourceId: source.id,
       title: finding.title,
       description: finding.explanation,
-      severity: presentation?.severity ?? findingSeverity(source.riskScore),
+      severity:
+        presentation?.severity ?? findingSeverity(finding.impact, source.riskScore),
       badgeLabel: presentation?.badgeLabel,
-      evidenceCount: 1,
-      evidence: [mapEvidence(category, source, finding)],
+      evidenceCount: evidence.length,
+      evidence,
       impact: finding.impact ?? undefined,
       metadata: finding.metadata ?? undefined,
     };
@@ -210,7 +234,11 @@ export function mapAnalysisResponse(response: AnalysisApiResponse): ScamAnalysis
 
 export const analysisService: AnalysisService = {
   async getAnalysis(request) {
-    const response = await requestAnalysis({ currentUrl: request?.currentUrl });
+    const response = await requestAnalysis({
+      currentUrl: request?.currentUrl,
+      reviews: request?.reviews,
+      via: request?.via,
+    });
     return mapAnalysisResponse(response);
   },
 };

@@ -25,14 +25,9 @@ SCORING_CONFIG = ScoringConfig(
             weight=0.5,
             sources=(
                 SourceScoringConfig(
-                    id="domain-age",
-                    label="Domain Age",
-                    weight=0.6,
-                ),
-                SourceScoringConfig(
                     id="gptzero",
                     label="GPTZero",
-                    weight=0.4,
+                    weight=1.0,
                 ),
             ),
         ),
