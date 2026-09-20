@@ -10,7 +10,7 @@ export default defineConfig({
   }),
 
   manifest: {
-    name: "Hack the North 2026",
+    name: "Sham",
     description: "Browser assistant powered by the Backboard backend.",
     // `scripting` + all-URL host access lets the panel read the Instagram
     // links off the page being checked (only when the user clicks scan).
