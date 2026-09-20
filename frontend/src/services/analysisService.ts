@@ -2,6 +2,7 @@ import { requestAnalysis } from '@/lib/api';
 import type {
   AnalysisCategory,
   ConfidenceLevel,
+  Evidence,
   Finding,
   FindingSeverity,
   RiskStatus,
@@ -18,6 +19,9 @@ export interface AnalysisRequest {
   currentUrl?: string;
   instagramLinks?: string[];
   mode?: 'standard' | 'insufficient-data';
+  /** Review text extracted from the user's tab, forwarded to GPTZero scoring. */
+  reviews?: string[];
+  via?: string;
 }
 
 export interface AnalysisService {
@@ -50,11 +54,45 @@ function confidenceFromCoverage(coverage: number): ConfidenceLevel {
   return 'low';
 }
 
-function findingSeverity(sourceRisk: number | null): FindingSeverity {
-  const status = riskStatus(sourceRisk);
+/**
+ * Severity of one finding, from its own impact where the source reports one.
+ *
+ * Falling back to the source's score makes every card in a source look the
+ * same, which is actively misleading for GPTZero: its risk score is the *mean*
+ * probability across reviews, so a store with three fabricated reviews among
+ * twenty averages low and the cards quoting those three would read 'Info'. The
+ * per-finding impact is that review's own probability, which is what the badge
+ * should reflect. Sources with no per-finding impact (Reddit) keep the old
+ * behaviour.
+ */
+function findingSeverity(impact: number | null | undefined, sourceRisk: number | null): FindingSeverity {
+  const status = riskStatus(impact ?? sourceRisk);
   if (status === 'high') return 'danger';
   if (status === 'medium') return 'warning';
   return 'info';
+}
+
+const redditSeverityPresentation = {
+  critical: { severity: 'danger', badgeLabel: 'Critical' },
+  major: { severity: 'danger', badgeLabel: 'Major' },
+  moderate: { severity: 'warning', badgeLabel: 'Moderate' },
+  minor: { severity: 'info', badgeLabel: 'Minor' },
+  positive: { severity: 'positive', badgeLabel: 'Positive' },
+} as const satisfies Record<string, { severity: FindingSeverity; badgeLabel: string }>;
+
+/** Preserve the per-post severity assigned by the Reddit researcher. */
+function redditPresentation(
+  source: ApiSourceScore,
+  finding: ApiSourceScore['findings'][number],
+): { severity: FindingSeverity; badgeLabel?: string } | undefined {
+  if (source.id !== 'reddit') return undefined;
+
+  const severity = finding.metadata?.severity;
+  if (typeof severity !== 'string' || !(severity in redditSeverityPresentation)) {
+    return undefined;
+  }
+
+  return redditSeverityPresentation[severity as keyof typeof redditSeverityPresentation];
 }
 
 function sourceStatusLabel(status: ApiScoreStatus, riskScore: number | null): string {
@@ -64,18 +102,64 @@ function sourceStatusLabel(status: ApiScoreStatus, riskScore: number | null): st
   return 'Unavailable';
 }
 
+function sourceUrl(metadata: Record<string, unknown> | null): string | undefined {
+  const value = metadata?.url;
+  if (typeof value !== 'string') return undefined;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function mapEvidence(
+  findingId: string,
+  source: ApiSourceScore,
+  finding: ApiSourceScore['findings'][number],
+): Evidence[] {
+  const metadata = { ...(finding.metadata ?? {}) };
+  delete metadata.url;
+  const url = sourceUrl(finding.metadata);
+  const hasDetails = Object.keys(metadata).length > 0;
+
+  if (!hasDetails && !url) return [];
+
+  return [
+    {
+      id: `${findingId}:evidence`,
+      label: finding.title,
+      source: source.label,
+      url,
+      excerpt: finding.explanation,
+      metadata: hasDetails ? metadata : undefined,
+    },
+  ];
+}
+
 function mapFindings(category: ApiCategoryScore, source: ApiSourceScore): Finding[] {
-  return source.findings.map((finding) => ({
-    id: `${category.id}:${source.id}:${finding.ruleId}`,
-    categoryId: category.id,
-    sourceId: source.id,
-    title: finding.title,
-    description: finding.explanation,
-    severity: findingSeverity(source.riskScore),
-    evidenceCount: 1,
-    impact: finding.impact ?? undefined,
-    metadata: finding.metadata ?? undefined,
-  }));
+  return source.findings.map((finding, index) => {
+    // Rules can fire once per item, so repeated rule IDs still need unique keys.
+    const id = `${category.id}:${source.id}:${finding.ruleId}:${index}`;
+    const evidence = mapEvidence(id, source, finding);
+    const presentation = redditPresentation(source, finding);
+
+    return {
+      id,
+      categoryId: category.id,
+      sourceId: source.id,
+      title: finding.title,
+      description: finding.explanation,
+      severity:
+        presentation?.severity ?? findingSeverity(finding.impact, source.riskScore),
+      badgeLabel: presentation?.badgeLabel,
+      evidenceCount: evidence.length,
+      evidence,
+      impact: finding.impact ?? undefined,
+      metadata: finding.metadata ?? undefined,
+    };
+  });
 }
 
 function mapCategory(
@@ -152,8 +236,12 @@ export function mapAnalysisResponse(response: AnalysisApiResponse): ScamAnalysis
 export const analysisService: AnalysisService = {
   async getAnalysis(request) {
     const response = await requestAnalysis({
+     
       currentUrl: request?.currentUrl,
       instagramLinks: request?.instagramLinks,
+   ,
+      reviews: request?.reviews,
+      via: request?.via,
     });
     return mapAnalysisResponse(response);
   },

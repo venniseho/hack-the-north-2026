@@ -32,7 +32,7 @@ export function EvidenceItem({ evidence }: EvidenceItemProps) {
             rel="noreferrer"
             className="shrink-0 rounded-sm text-[11px] font-bold text-[#007889] underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-[#007889] dark:text-teal-200"
           >
-            Open
+            View source
           </a>
         )}
       </div>

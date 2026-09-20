@@ -2,7 +2,7 @@ export type RiskStatus = 'low' | 'medium' | 'high' | 'unknown';
 
 export type ConfidenceLevel = 'low' | 'medium' | 'high';
 
-export type FindingSeverity = 'info' | 'warning' | 'danger';
+export type FindingSeverity = 'info' | 'warning' | 'danger' | 'positive';
 
 export interface ScoreWeight {
   value: number;
@@ -66,6 +66,7 @@ export interface Finding {
   title: string;
   description: string;
   severity: FindingSeverity;
+  badgeLabel?: string;
   evidenceCount?: number;
   evidence?: Evidence[];
   impact?: number;

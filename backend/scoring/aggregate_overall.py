@@ -48,8 +48,22 @@ def aggregate_overall(
 
     for category_config, category_score in zip(config.categories, categories):
         if category_score.risk_score is not None and category_config.weight > 0:
-            weighted_risk += category_score.risk_score * category_config.weight
-            available_weight += category_config.weight
+            # Scale a category's say by how much of it actually reported, so a
+            # silent source's weight is simply absent rather than redistributed
+            # to whichever source in that category did speak.
+            #
+            # Without this, normalising by available weight alone means losing
+            # information can *move* the overall score: the surviving source is
+            # promoted to carry the whole category, so a minor signal ends up
+            # driving the verdict at exactly the moment there is nothing left to
+            # corroborate it against.
+            #
+            # No-op while every category has a single source (coverage is then
+            # only ever 0 or 100). It starts mattering again as soon as any
+            # category gains a second source.
+            effective_weight = category_config.weight * (category_score.coverage / 100.0)
+            weighted_risk += category_score.risk_score * effective_weight
+            available_weight += effective_weight
 
     return ScoringResult(
         overall_risk=(

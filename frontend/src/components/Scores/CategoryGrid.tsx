@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import type { AnalysisCategory, Finding } from '@/src/types/analysis';
 import { FindingsList } from '../Findings/FindingsList';
 import { ScoreCategory } from './ScoreCategory';
+import { SourceList } from './SourceList';
 
 interface CategoryGridProps {
   categories: AnalysisCategory[];
@@ -32,7 +33,13 @@ export function CategoryGrid({ categories, findings }: CategoryGridProps) {
               }
             />
             {isExpanded && (
-              <div id={findingsRegionId}>
+              <div id={findingsRegionId} className="space-y-3">
+                {/* Sources first: a source that reported nothing has no
+                    findings, so this is the only place it can account for
+                    itself. */}
+                <div className="pl-2">
+                  <SourceList sources={category.sources ?? []} />
+                </div>
                 <FindingsList categories={[category]} findings={categoryFindings} embedded />
               </div>
             )}
