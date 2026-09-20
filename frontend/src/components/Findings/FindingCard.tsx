@@ -25,6 +25,7 @@ export function FindingCard({ finding }: FindingCardProps) {
   const evidenceRegionId = useId();
   const evidence = finding.evidence ?? [];
   const hasEvidence = evidence.length > 0;
+  const sourceEvidence = evidence.filter((item) => item.url);
 
   return (
     <article className="rounded-md border border-slate-200 bg-white p-3 shadow-sm dark:border-teal-700/60 dark:bg-[#082a31]">
@@ -60,6 +61,18 @@ export function FindingCard({ finding }: FindingCardProps) {
                 {isExpanded ? 'Hide evidence' : 'View evidence'}
               </button>
             )}
+
+            {sourceEvidence.map((item, index) => (
+              <a
+                key={item.id}
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-sm text-[11px] text-[#007889] underline underline-offset-2 focus:outline-none focus:ring-2 focus:ring-[#007889] dark:text-teal-200"
+              >
+                {sourceEvidence.length === 1 ? 'View source' : `Source ${index + 1}`}
+              </a>
+            ))}
           </div>
         </div>
       </div>

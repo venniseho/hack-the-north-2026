@@ -2,6 +2,7 @@ import { requestAnalysis } from '@/lib/api';
 import type {
   AnalysisCategory,
   ConfidenceLevel,
+  Evidence,
   Finding,
   FindingSeverity,
   RiskStatus,
@@ -63,6 +64,36 @@ function sourceStatusLabel(status: ApiScoreStatus, riskScore: number | null): st
   return 'Unavailable';
 }
 
+function sourceUrl(metadata: Record<string, unknown> | null): string | undefined {
+  const value = metadata?.url;
+  if (typeof value !== 'string') return undefined;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function mapEvidence(
+  category: ApiCategoryScore,
+  source: ApiSourceScore,
+  finding: ApiSourceScore['findings'][number],
+): Evidence {
+  const metadata = { ...(finding.metadata ?? {}) };
+  delete metadata.url;
+
+  return {
+    id: `${category.id}:${source.id}:${finding.ruleId}:evidence`,
+    label: finding.title,
+    source: source.label,
+    url: sourceUrl(finding.metadata),
+    excerpt: finding.explanation,
+    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+  };
+}
+
 function mapFindings(category: ApiCategoryScore, source: ApiSourceScore): Finding[] {
   return source.findings.map((finding) => ({
     id: `${category.id}:${source.id}:${finding.ruleId}`,
@@ -72,6 +103,7 @@ function mapFindings(category: ApiCategoryScore, source: ApiSourceScore): Findin
     description: finding.explanation,
     severity: findingSeverity(source.riskScore),
     evidenceCount: 1,
+    evidence: [mapEvidence(category, source, finding)],
     impact: finding.impact ?? undefined,
     metadata: finding.metadata ?? undefined,
   }));
